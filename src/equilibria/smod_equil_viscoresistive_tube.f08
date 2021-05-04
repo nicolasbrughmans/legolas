@@ -3,7 +3,7 @@
 !! and resistive effects included.
 !!
 !! This equilibrium is taken from Erdélyi & Goossens (1995)
-! SUBMODULE: smod_equil_coronal_flux_tube
+! SUBMODULE: smod_equil_viscoresistive_tube
 submodule(mod_equilibrium) smod_equil_viscoresistive_tube
   implicit none
 

@@ -61,6 +61,7 @@ module mod_equilibrium
     module subroutine harris_sheet_eq; end subroutine
     module subroutine tc_pinch_eq; end subroutine
     module subroutine tc_hmri_eq; end subroutine
+    module subroutine solar_wind_tube_eq; end subroutine
     module subroutine user_defined_eq; end subroutine
   end interface
 
@@ -237,6 +238,8 @@ contains
       set_equilibrium_values => tc_pinch_eq
     case("tc_HMRI")
       set_equilibrium_values => tc_hmri_eq
+    case("solar_wind_tube")
+      set_equilibrium_values => solar_wind_tube_eq
     case("user_defined")
       set_equilibrium_values => user_defined_eq
     case default

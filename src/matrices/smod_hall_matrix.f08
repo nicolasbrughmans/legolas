@@ -12,89 +12,89 @@ contains
     real(dp)  :: eta_e
     real(dp)  :: WVop
 
-    if (elec_inertia) then
-      eps = eps_grid(gauss_idx)
-      deps = d_eps_grid_dr(gauss_idx)
-      rho = rho_field % rho0(gauss_idx)
-      drho = rho_field % d_rho0_dr(gauss_idx)
-      eta_e = hall_field % inertiafactor(gauss_idx)
-      WVop = get_wv_operator(gauss_idx)
-
-      ! ==================== Quadratic * Quadratic ====================
-      call reset_factor_positions(new_size=1)
-      ! B_H(6, 6)
-      factors(1) = eta_e * WVop / rho
-      positions(1, :) = [6, 6]
-      call subblock(quadblock, factors, positions, current_weight, h_quad, h_quad)
-
-      ! ==================== Quadratic * dCubic ====================
-      call reset_factor_positions(new_size=2)
-      ! B_H(6, 7)
-      factors(1) = -eta_e * k2 / (eps * rho)
-      positions(1, :) = [6, 7]
-      ! B_H(6, 8)
-      factors(2) = -eta_e * eps * k3 / rho
-      positions(2, :) = [6, 8]
-      call subblock(quadblock, factors, positions, current_weight, h_quad, dh_cubic)
-
-      ! ==================== Cubic * Quadratic ====================
-      call reset_factor_positions(new_size=2)
-      ! B_H(7, 6)
-      factors(1) = -eta_e * k2 * (deps / (eps * rho) - drho / rho**2)
-      positions(1, :) = [7, 6]
-      ! B_H(8, 6)
-      factors(2) = eta_e * drho * eps * k3 / rho**2
-      positions(2, :) = [8, 6]
-      call subblock(quadblock, factors, positions, current_weight, h_cubic, h_quad)
-
-      ! ==================== dCubic * Quadratic ====================
-      call reset_factor_positions(new_size=2)
-      ! B_H(7, 6)
-      factors(1) = -eta_e * k2 / rho
-      positions(1, :) = [7, 6]
-      ! B_H(8, 6)
-      factors(2) = -eta_e * eps * k3 / rho
-      positions(2, :) = [8, 6]
-      call subblock(quadblock, factors, positions, current_weight, dh_cubic, h_quad)
-
-      ! ==================== Cubic * Cubic ====================
-      call reset_factor_positions(new_size=4)
-      ! B_H(7, 7)
-      factors(1) = eta_e * k3**2 / rho
-      positions(1, :) = [7, 7]
-      ! B_H(7, 8)
-      factors(2) = -eta_e * k2 * k3 / rho
-      positions(2, :) = [7, 8]
-      ! B_H(8, 7)
-      factors(3) = -eta_e * k2 * k3 / (eps * rho)
-      positions(3, :) = [8, 7]
-      ! B_H(8, 8)
-      factors(4) = eta_e * k2**2 / (eps * rho)
-      positions(4, :) = [8, 8]
-      call subblock(quadblock, factors, positions, current_weight, h_cubic, h_cubic)
-
-      ! ==================== Cubic * dCubic ====================
-      call reset_factor_positions(new_size=2)
-      ! B_H(7, 7)
-      factors(1) = eta_e * (deps / (eps * rho) - drho / rho**2)
-      positions(1, :) = [7, 7]
-      ! B_H(8, 8)
-      factors(2) = -eta_e * eps * drho / rho**2
-      positions(2, :) = [8, 8]
-      call subblock(quadblock, factors, positions, current_weight, h_cubic, dh_cubic)
-
-      ! ==================== dCubic * dCubic ====================
-      call reset_factor_positions(new_size=2)
-      ! B_H(7, 7)
-      factors(1) = eta_e / rho
-      positions(1, :) = [7, 7]
-      ! B_H(8, 8)
-      factors(2) = eta_e * eps / rho
-      positions(2, :) = [8, 8]
-      call subblock(quadblock, factors, positions, current_weight, dh_cubic, dh_cubic)
-    else
+    if (.not. elec_inertia) then
       return
     end if
+
+    eps = eps_grid(gauss_idx)
+    deps = d_eps_grid_dr(gauss_idx)
+    rho = rho_field % rho0(gauss_idx)
+    drho = rho_field % d_rho0_dr(gauss_idx)
+    eta_e = hall_field % inertiafactor(gauss_idx)
+    WVop = get_wv_operator(gauss_idx)
+
+    ! ==================== Quadratic * Quadratic ====================
+    call reset_factor_positions(new_size=1)
+    ! B_H(6, 6)
+    factors(1) = eta_e * WVop / rho
+    positions(1, :) = [6, 6]
+    call subblock(quadblock, factors, positions, current_weight, h_quad, h_quad)
+
+    ! ==================== Quadratic * dCubic ====================
+    call reset_factor_positions(new_size=2)
+    ! B_H(6, 7)
+    factors(1) = -eta_e * k2 / (eps * rho)
+    positions(1, :) = [6, 7]
+    ! B_H(6, 8)
+    factors(2) = -eta_e * eps * k3 / rho
+    positions(2, :) = [6, 8]
+    call subblock(quadblock, factors, positions, current_weight, h_quad, dh_cubic)
+
+    ! ==================== Cubic * Quadratic ====================
+    call reset_factor_positions(new_size=2)
+    ! B_H(7, 6)
+    factors(1) = -eta_e * k2 * (deps / eps - drho / rho) / rho
+    positions(1, :) = [7, 6]
+    ! B_H(8, 6)
+    factors(2) = eta_e * drho * eps * k3 / rho**2
+    positions(2, :) = [8, 6]
+    call subblock(quadblock, factors, positions, current_weight, h_cubic, h_quad)
+
+    ! ==================== dCubic * Quadratic ====================
+    call reset_factor_positions(new_size=2)
+    ! B_H(7, 6)
+    factors(1) = -eta_e * k2 / rho
+    positions(1, :) = [7, 6]
+    ! B_H(8, 6)
+    factors(2) = -eta_e * eps * k3 / rho
+    positions(2, :) = [8, 6]
+    call subblock(quadblock, factors, positions, current_weight, dh_cubic, h_quad)
+
+    ! ==================== Cubic * Cubic ====================
+    call reset_factor_positions(new_size=4)
+    ! B_H(7, 7)
+    factors(1) = eta_e * k3**2 / rho
+    positions(1, :) = [7, 7]
+    ! B_H(7, 8)
+    factors(2) = -eta_e * k2 * k3 / rho
+    positions(2, :) = [7, 8]
+    ! B_H(8, 7)
+    factors(3) = -eta_e * k2 * k3 / (eps * rho)
+    positions(3, :) = [8, 7]
+    ! B_H(8, 8)
+    factors(4) = eta_e * k2**2 / (eps * rho)
+    positions(4, :) = [8, 8]
+    call subblock(quadblock, factors, positions, current_weight, h_cubic, h_cubic)
+
+    ! ==================== Cubic * dCubic ====================
+    call reset_factor_positions(new_size=2)
+    ! B_H(7, 7)
+    factors(1) = eta_e * (deps / eps - drho / rho) / rho
+    positions(1, :) = [7, 7]
+    ! B_H(8, 8)
+    factors(2) = -eta_e * eps * drho / rho**2
+    positions(2, :) = [8, 8]
+    call subblock(quadblock, factors, positions, current_weight, h_cubic, dh_cubic)
+
+    ! ==================== dCubic * dCubic ====================
+    call reset_factor_positions(new_size=2)
+    ! B_H(7, 7)
+    factors(1) = eta_e / rho
+    positions(1, :) = [7, 7]
+    ! B_H(8, 8)
+    factors(2) = eta_e * eps / rho
+    positions(2, :) = [8, 8]
+    call subblock(quadblock, factors, positions, current_weight, dh_cubic, dh_cubic)
 
   end procedure add_hall_bmatrix_terms
 
@@ -106,7 +106,7 @@ contains
     real(dp)  :: rho, drho
     real(dp)  :: T0, dT0
     real(dp)  :: B01, B02, B03, dB02, dB03
-    real(dp)  :: drB02, dB02_r
+    real(dp)  :: drB02
     real(dp)  :: eta_H
     real(dp)  :: Fop_plus, Gop_plus, Gop_min, WVop
 
@@ -125,9 +125,8 @@ contains
     B03 = B_field % B03(gauss_idx)
     dB03 = B_field % d_B03_dr(gauss_idx)
 
-    ! Calculate derivatives eps*B02, B02/eps
+    ! Calculate derivative of eps*B02
     drB02 = deps * B02 + eps * dB02
-    dB02_r = dB02 / eps - B02 * deps / eps**2
 
     eta_H = hall_field % hallfactor(gauss_idx)
 
@@ -156,7 +155,7 @@ contains
     ! ==================== dQuadratic * Quadratic ====================
     call reset_factor_positions(new_size=1)
     ! H(6, 6)
-    factors(1) = eta_H * eps * Gop_min /rho
+    factors(1) = eta_H * eps * Gop_min / rho
     positions(1, :) = [6, 6]
     call subblock(quadblock, factors, positions, current_weight, dh_quad, h_quad)
     if (elec_pressure) then
@@ -180,18 +179,14 @@ contains
     positions(2, :) = [6, 8]
     call subblock(quadblock, factors, positions, current_weight, h_quad, h_cubic)
 
-    ! ==================== dQuadratic * Cubic ====================
-    call reset_factor_positions(new_size=1)
+    ! ==================== Quadratic * dCubic ====================
+    call reset_factor_positions(new_size=2)
     ! H(6, 7)
     factors(1) = eta_H * B03 * (deps / eps - drho / rho) / rho
     positions(1, :) = [6, 7]
-    call subblock(quadblock, factors, positions, current_weight, dh_quad, h_cubic)
-
-    ! ==================== Quadratic * dCubic ====================
-    call reset_factor_positions(new_size=1)
     ! H(6, 8)
-    factors(1) = eta_H * eps * B02 * (deps / eps + drho / rho) / rho
-    positions(1, :) = [6, 8]
+    factors(2) = eta_H * eps * B02 * (deps / eps + drho / rho) / rho
+    positions(2, :) = [6, 8]
     call subblock(quadblock, factors, positions, current_weight, h_quad, dh_cubic)
 
     ! ==================== dQuadratic * dCubic ====================

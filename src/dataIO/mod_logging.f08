@@ -279,6 +279,30 @@ contains
         use_prefix=.false. &
       )
     end if
+    if (hall_mhd) then
+      call logical_tostring(hall_mhd, char_log)
+      call log_message( &
+        "Hall term            : " // adjustl(char_log), &
+        level="info", &
+        use_prefix=.false. &
+      )
+      if (elec_pressure) then
+        call logical_tostring(elec_pressure, char_log)
+        call log_message( &
+          "electron pressure    : " // adjustl(char_log), &
+          level="info", &
+          use_prefix=.false. &
+        )
+      end if
+      if (elec_inertia) then
+        call logical_tostring(elec_inertia, char_log)
+        call log_message( &
+          "electron inertia     : " // adjustl(char_log), &
+          level="info", &
+          use_prefix=.false. &
+        )
+      end if
+    end if
 
     call log_message( &
       "            << Solver settings >>", level="info", use_prefix=.false. &
