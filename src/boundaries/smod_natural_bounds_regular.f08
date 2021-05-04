@@ -4,6 +4,7 @@ submodule (mod_boundary_manager:smod_natural_boundaries) smod_natural_bounds_reg
 contains
 
   module procedure add_natural_regular_terms
+    use mod_global_variables, only: gauge
     use mod_matrix_shortcuts, only: get_G_operator
 
     real(dp)  :: eps
@@ -28,7 +29,11 @@ contains
     factors(2) = rho
     positions(2, :) = [2, 5]
     ! A(2, 6)
-    factors(3) = eps * Gop_min
+    if (gauge == 'Coulomb') then
+      factors(3) = 0.0d0
+    else
+      factors(3) = eps * Gop_min
+    end if
     positions(3, :) = [2, 6]
     call subblock(quadblock, factors, positions, weight, h_cubic, h_quad)
 
@@ -43,27 +48,25 @@ contains
     call subblock(quadblock, factors, positions, weight, h_cubic, dh_cubic)
 
     ! ==================== Quadratic * Quadratic ====================
-    call reset_factor_positions(new_size=2)
-    ! A(3, 6)
-    factors(1) = ic * eps * k3 * B01
-    positions(1, :) = [3, 6]
-    ! A(4, 6)
-    factors(2) = -ic * k2 * B01
-    positions(2, :) = [4, 6]
-    call subblock(quadblock, factors, positions, weight, h_quad, h_quad)
+    if (gauge /= 'Coulomb') then
+      call reset_factor_positions(new_size=2)
+      ! A(3, 6)
+      factors(1) = ic * eps * k3 * B01
+      positions(1, :) = [3, 6]
+      ! A(4, 6)
+      factors(2) = -ic * k2 * B01
+      positions(2, :) = [4, 6]
+      call subblock(quadblock, factors, positions, weight, h_quad, h_quad)
+    end if
 
-    ! ==================== Cubic * dQuadratic ====================
-    call reset_factor_positions(new_size=1)
+    ! ==================== Quadratic * dCubic ====================
+    call reset_factor_positions(new_size=2)
     ! A(3, 8)
     factors(1) = -ic * eps * B01
     positions(1, :) = [3, 8]
-    call subblock(quadblock, factors, positions, weight, h_cubic, dh_quad)
-
-    ! ==================== Quadratic * dcubic ====================
-    call reset_factor_positions(new_size=1)
     ! A(4, 7)
-    factors(1) = ic * B01
-    positions(1, :) = [4, 7]
+    factors(2) = ic * B01
+    positions(2, :) = [4, 7]
     call subblock(quadblock, factors, positions, weight, h_quad, dh_cubic)
   end procedure add_natural_regular_terms
 

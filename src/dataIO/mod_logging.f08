@@ -308,6 +308,11 @@ contains
       "            << Solver settings >>", level="info", use_prefix=.false. &
     )
     call log_message( &
+      "gauge                : " // trim(adjustl(gauge)), &
+      level="info", &
+      use_prefix=.false. &
+    )
+    call log_message( &
       "solver               : " // trim(adjustl(solver)), &
       level="info", &
       use_prefix=.false. &

@@ -44,7 +44,7 @@ contains
 
 
   module procedure add_regular_matrix_terms
-    use mod_global_variables, only: external_gravity
+    use mod_global_variables, only: external_gravity, gauge
     use mod_equilibrium, only: grav_field
 
     real(dp)  :: eps, deps
@@ -81,20 +81,29 @@ contains
     factors(1) = -drho
     positions(1, :) = [1, 2]
     ! A(3, 7)
-    factors(2) = k3 * (drB02 - ic * k2 * B01) / eps
+    factors(2) = k3 * drB02 / eps
     positions(2, :) = [3, 7]
     ! A(3, 8)
-    factors(3) = k2 * (ic * k2 * B01 - drB02) / eps
+    factors(3) = -k2 * drB02 / eps
     positions(3, :) = [3, 8]
     ! A(4, 7)
-    factors(4) = k3 * (dB03 - ic * k3 * B01)
+    factors(4) = k3 * dB03
     positions(4, :) = [4, 7]
     ! A(4, 8)
-    factors(5) = k2 * (ic * B01 * k3 - dB03)
+    factors(5) = -k2 * dB03
     positions(5, :) = [4, 8]
     ! A(5, 2)
     factors(6) = -dT0 * rho
     positions(6, :) = [5, 2]
+    if (gauge == 'Coulomb') then
+      factors(3) = factors(3) + ic * B01 * WVop
+      factors(4) = factors(4) - ic * B01 * WVop / eps
+    else
+      factors(2) = factors(2) - ic * k2 * k3 * B01 / eps
+      factors(3) = factors(3) + ic * k2**2 * B01 / eps
+      factors(4) = factors(4) - ic * k3**2 * B01
+      factors(5) = factors(5) + ic * k2 * k3 * B01
+    end if
     call subblock(quadblock, factors, positions, current_weight, h_quad, h_cubic)
 
     ! ==================== Quadratic * dCubic ====================
@@ -172,7 +181,11 @@ contains
     factors(2) = -deps * rho / eps
     positions(2, :) = [2, 5]
     ! A(2, 6)
-    factors(3) = deps * Gop_plus
+    if (gauge == 'Coulomb') then
+      factors(3) = k3 * drB02 - k2 * dB03 + 2.0d0 * deps * k2 * B03 / eps
+    else
+      factors(3) = deps * Gop_plus
+    end if
     positions(3, :) = [2, 6]
     ! A(7, 4)
     factors(4) = ic * B01
@@ -191,17 +204,29 @@ contains
     factors(2) = -rho
     positions(2, :) = [2, 5]
     ! A(2, 6)
-    factors(3) = -eps * Gop_min
+    if (gauge == 'Coulomb') then
+      factors(3) = 0.0d0
+    else
+      factors(3) = -eps * Gop_min
+    end if
     positions(3, :) = [2, 6]
     call subblock(quadblock, factors, positions, current_weight, dh_cubic, h_quad)
 
     ! ==================== Cubic * Cubic ====================
     call reset_factor_positions(new_size=4)
     ! A(2, 7)
-    factors(1) = -k3 * Fop_plus
+    if (gauge == 'Coulomb') then
+      factors(1) = -B03 * WVop / eps
+    else
+      factors(1) = -k3 * Fop_plus
+    end if
     positions(1, :) = [2, 7]
     ! A(2, 8)
-    factors(2) = k2 * Fop_plus
+    if (gauge == 'Coulomb') then
+      factors(2) = B02 * WVop
+    else
+      factors(2) = k2 * Fop_plus
+    end if
     positions(2, :) = [2, 8]
     ! A(7, 2)
     factors(3) = -B03

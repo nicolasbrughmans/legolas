@@ -85,6 +85,8 @@ module mod_global_variables
   logical, save             :: elec_inertia
   !> boolean to use dropoff profile for inertia parameter, defaults to <tt>False </tt>
   logical, save             :: inertia_dropoff
+  !> defines the magnetic potential gauge choice
+  character(len=str_len)    :: gauge
   !> defines the geometry of the problem, defaults depend on chosen equilibrium
   character(len=str_len)    :: geometry
   !> defines the presence of a coaxial inner boundary for a cylindrical geometry,
@@ -265,6 +267,7 @@ contains
     which_eigenvalues = "LM"
     ! this defaults to 10*N, but we technically don't know N yet
     maxiter = 0
+    gauge = "standard"
   end subroutine initialise_globals
 
 
