@@ -4,7 +4,7 @@ submodule (mod_boundary_manager:smod_natural_boundaries) smod_natural_bounds_res
 contains
 
   module procedure add_natural_resistive_terms
-    use mod_global_variables, only: gamma_1, resistivity
+    use mod_global_variables, only: gamma_1, resistivity, gauge
     use mod_equilibrium, only: eta_field
 
     real(dp)  :: eps, deps
@@ -27,25 +27,23 @@ contains
     drB02 = deps * B02 + eps * dB02
 
     ! ==================== Quadratic * Quadratic ====================
-    call reset_factor_positions(new_size=1)
-    ! R(5, 6)
-    factors(1) = 2.0d0 * ic * gamma_1 * eta * (k3 * drB02 - k2 * dB03)
-    positions(1, :) = [5, 6]
-    call subblock(quadblock, factors, positions, weight, h_quad, h_quad)
+    if (gauge /= 'Coulomb') then
+      call reset_factor_positions(new_size=1)
+      ! R(5, 6)
+      factors(1) = 2.0d0 * ic * gamma_1 * eta * (k3 * drB02 - k2 * dB03)
+      positions(1, :) = [5, 6]
+      call subblock(quadblock, factors, positions, weight, h_quad, h_quad)
+    end if
 
     ! ==================== Quadratic * dCubic ====================
-    call reset_factor_positions(new_size=1)
+    call reset_factor_positions(new_size=2)
     ! R(5, 7)
     factors(1) = 2.0d0 * ic * gamma_1 * eta * dB03
     positions(1, :) = [5, 7]
-    call subblock(quadblock, factors, positions, weight, h_quad, dh_cubic)
-
-    ! ==================== Quadratic * Cubic ====================
-    call reset_factor_positions(new_size=1)
     ! R(5, 8)
-    factors(1) = -2.0d0 * ic * gamma_1 * eta * drB02
-    positions(1, :) = [5, 8]
-    call subblock(quadblock, factors, positions, weight, h_quad, h_cubic)
+    factors(2) = -2.0d0 * ic * gamma_1 * eta * drB02
+    positions(2, :) = [5, 8]
+    call subblock(quadblock, factors, positions, weight, h_quad, dh_cubic)
 
     ! ==================== Cubic * Quadratic ====================
     call reset_factor_positions(new_size=2)

@@ -5,8 +5,10 @@ submodule (mod_matrix_manager) smod_resistive_matrix
 contains
 
   module procedure add_resistive_matrix_terms
+    use mod_global_variables, only: gauge
+
     real(dp)  :: eps, deps
-    real(dp)  :: B02, dB02, drB02, ddB02
+    real(dp)  :: B02, dB02, drB02, ddB02, ddrB02
     real(dp)  :: B03, dB03, ddB03
     real(dp)  :: eta, detadT, deta
     real(dp)  :: WVop, Rop_pos, Rop_neg
@@ -19,6 +21,7 @@ contains
     dB02 = B_field % d_B02_dr(gauss_idx)
     drB02 = deps * B02 + eps * dB02
     ddB02 = eta_field % dd_B02_dr(gauss_idx)
+    ddrB02 = 2.0d0 * deps * dB02 + eps * ddB02
     B03 = B_field % B03(gauss_idx)
     dB03 = B_field % d_B03_dr(gauss_idx)
     ddB03 = eta_field % dd_B03_dr(gauss_idx)
@@ -37,10 +40,14 @@ contains
     factors(1) = ic * gamma_1 * detadT * ((drB02 / eps)**2 + dB03**2)
     positions(1, :) = [5, 5]
     ! R(5, 6)
-    factors(2) = 2.0d0 * ic * gamma_1 * ( &
-      k2 * (dB03 * Rop_pos + eta * ddB03) &
-      + k3 * (drB02 * Rop_neg - eta * (2.0d0 * deps * dB02 + eps * ddB02)) &
-    )
+    if (gauge == 'Coulomb') then
+      factors(2) = 4.0d0 * ic * gamma_1 * eta * k2 * dB03 * deps / eps
+    else
+      factors(2) = 2.0d0 * ic * gamma_1 * ( &
+        k2 * (dB03 * Rop_pos + eta * ddB03) &
+        + k3 * (drB02 * Rop_neg - eta * (2.0d0 * deps * dB02 + eps * ddB02)) &
+      )
+    end if
     positions(2, :) = [5, 6]
     ! R(6, 6)
     factors(3) = -ic * eta * WVop
@@ -50,18 +57,27 @@ contains
     ! ==================== dQuadratic * Quadratic ====================
     call reset_factor_positions(new_size=1)
     ! R(5, 6)
-    factors(1) = -2.0d0 * ic * gamma_1 * eta * (k3 * drB02 - k2 * dB03)
+    if (gauge == 'Coulomb') then
+      factors(1) = 0.0d0
+    else
+      factors(1) = -2.0d0 * ic * gamma_1 * eta * (k3 * drB02 - k2 * dB03)
+    end if
     positions(1, :) = [5, 6]
     call subblock(quadblock, factors, positions, current_weight, dh_quad, h_quad)
 
     ! ==================== Quadratic * Cubic ====================
     call reset_factor_positions(new_size=3)
     ! R(5, 7)
-    factors(1) = -2.0d0 * ic * gamma_1 * eta * (drB02 * k2 * k3 / eps**2 + k3**2 * dB03)
     positions(1, :) = [5, 7]
     ! R(5, 8)
-    factors(2) = 2.0d0 * ic * gamma_1 * eta * (drB02 * k2**2 / eps**2 + k2 * k3 * dB03)
     positions(2, :) = [5, 8]
+    if (gauge == 'Coulomb') then
+      factors(1) = -2.0d0 * ic * gamma_1 * eta * dB03 * WVop / eps
+      factors(2) = 2.0d0 * ic * gamma_1 * eta * drB02 * WVop / eps
+    else
+      factors(1) = -2.0d0 * ic * gamma_1 * eta * (drB02 * k2 * k3 / eps**2 + k3**2 * dB03)
+      factors(2) = 2.0d0 * ic * gamma_1 * eta * (drB02 * k2**2 / eps**2 + k2 * k3 * dB03)
+    end if
     ! R(6, 8)
     factors(3) = ic * eta * eps * k3
     positions(3, :) = [6, 8]
@@ -70,13 +86,18 @@ contains
     ! ==================== Quadratic * dCubic ====================
     call reset_factor_positions(new_size=3)
     ! R(5, 7)
-    factors(1) = -2.0d0 * ic * gamma_1 * (dB03 * Rop_pos + ddB03 * eta)
     positions(1, :) = [5, 7]
     ! R(5, 8)
-    factors(2) = -2.0d0 * ic * gamma_1 * ( &
-      drB02 * Rop_neg - eta * (2.0d0 * deps * dB02 + eps * ddB02) &
-    )
     positions(2, :) = [5, 8]
+    if (gauge == 'Coulomb') then
+      factors(1) = -2.0d0 * ic * gamma_1 * (Rop_pos * dB03 + eta * ddB03)
+      factors(2) = 2.0d0 * ic * gamma_1 * (eta * ddrB02 - Rop_neg * drB02)
+    else
+      factors(1) = -2.0d0 * ic * gamma_1 * (dB03 * Rop_pos + ddB03 * eta)
+      factors(2) = -2.0d0 * ic * gamma_1 * ( &
+        drB02 * Rop_neg - eta * (2.0d0 * deps * dB02 + eps * ddB02) &
+      )
+    end if
     ! R(6, 7)
     factors(3) = ic * eta * k2 / eps
     positions(3, :) = [6, 7]
@@ -88,7 +109,7 @@ contains
     factors(1) = -2.0d0 * ic * gamma_1 * eta * dB03
     positions(1, :) = [5, 7]
     ! R(5, 8)
-    factors(2) = 2 * ic * gamma_1 * drB02 * eta
+    factors(2) = 2.0d0 * ic * gamma_1 * drB02 * eta
     positions(2, :) = [5, 8]
     call subblock(quadblock, factors, positions, current_weight, dh_quad, dh_cubic)
 
@@ -98,40 +119,60 @@ contains
     factors(1) = ic * dB03 * detadT
     positions(1, :) = [7, 5]
     ! R(7, 6)
-    factors(2) = ic * k2 * Rop_pos
+    if (gauge == 'Coulomb') then
+      factors(2) = 2.0d0 * ic * eta * k2 * deps / eps
+    else
+      factors(2) = ic * k2 * Rop_pos
+    end if
     positions(2, :) = [7, 6]
     ! R(8, 5)
     factors(3) = -ic * drB02 / eps * detadT
     positions(3, :) = [8, 5]
     ! R(8, 6)
-    factors(4) = ic * deta * eps * k3
+    if (gauge == 'Coulomb') then
+      factors(4) = 0.0d0
+    else
+      factors(4) = ic * deta * eps * k3
+    end if
     positions(4, :) = [8, 6]
     call subblock(quadblock, factors, positions, current_weight, h_cubic, h_quad)
 
     ! ==================== dCubic * Quadratic ====================
     call reset_factor_positions(new_size=2)
     ! R(7, 6)
-    factors(1) = ic * eta * k2
     positions(1, :) = [7, 6]
     ! R(8, 6)
-    factors(2) = ic * eta * eps * k3
     positions(2, :) = [8, 6]
+    if (gauge == 'Coulomb') then
+      factors(1) = 0.0d0
+      factors(2) = 0.0d0
+    else
+      factors(1) = ic * eta * k2
+      factors(2) = ic * eta * eps * k3
+    end if
     call subblock(quadblock, factors, positions, current_weight, dh_cubic, h_quad)
 
     ! ==================== Cubic * Cubic ====================
     call reset_factor_positions(new_size=4)
     ! R(7, 7)
-    factors(1) = -ic * eta * k3**2
     positions(1, :) = [7, 7]
     ! R(7, 8)
-    factors(2) = ic * eta * k2 * k3
     positions(2, :) = [7, 8]
     ! R(8, 7)
-    factors(3) = ic * eta * k2 * k3 / eps
     positions(3, :) = [8, 7]
     ! R(8, 8)
-    factors(4) = -ic * eta * k2**2 / eps
     positions(4, :) = [8, 8]
+    if (gauge == 'Coulomb') then
+      factors(1) = -ic * eta * WVop / eps
+      factors(2) = 0.0d0
+      factors(3) = 0.0d0
+      factors(4) = -ic * eta * WVop
+    else
+      factors(1) = -ic * eta * k3**2
+      factors(2) = ic * eta * k2 * k3
+      factors(3) = ic * eta * k2 * k3 / eps
+      factors(4) = -ic * eta * k2**2 / eps
+    end if
     call subblock(quadblock, factors, positions, current_weight, h_cubic, h_cubic)
 
     ! ==================== Cubic * dCubic ====================
