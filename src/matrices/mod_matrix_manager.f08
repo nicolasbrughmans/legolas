@@ -75,6 +75,12 @@ module mod_matrix_manager
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
     end subroutine add_hall_bmatrix_terms
+
+    module subroutine add_penalty_matrix_terms(gauss_idx, current_weight, quadblock)
+      integer, intent(in)   :: gauss_idx
+      real(dp), intent(in)  :: current_weight
+      complex(dp), intent(inout)  :: quadblock(:, :)
+    end subroutine add_penalty_matrix_terms
   end interface
 
   private
@@ -172,6 +178,9 @@ contains
           call add_hall_matrix_terms(gauss_idx, current_weight, quadblock_A)
           call add_hall_bmatrix_terms(gauss_idx, current_weight, quadblock_B)
         end if
+        !if (gauge /= 'standard') then
+        !  call add_penalty_matrix_terms(gauss_idx, current_weight, quadblock_A)
+        !end if
       end do
 
       ! dx from integral

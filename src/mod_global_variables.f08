@@ -182,6 +182,8 @@ module mod_global_variables
   complex(dp)               :: sigma
   !> defines the magnetic potential gauge choice
   character(len=str_len)    :: gauge
+  !> factor for applying a gauge with the penalty method
+  real(dp)                  :: penalty
 
 contains
 
@@ -268,6 +270,7 @@ contains
     ! this defaults to 10*N, but we technically don't know N yet
     maxiter = 0
     gauge = "standard"
+    penalty = 1.0d4
   end subroutine initialise_globals
 
 
