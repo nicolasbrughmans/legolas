@@ -26,4 +26,5 @@ No update of the pylbo reader needed
 2) added B01, ddT0, v01, dv01, ddv01 to equilibrium data
 
 === version 1.1.1 --> 1.1.2 ===
-1) postprocessed quantities added after eigenfunctions and before matrices (optional)
+1) added write_postprocessed between write_eigenfunctions and write_matrices in header
+2) postprocessed quantities added after eigenfunctions and before matrices (optional)
