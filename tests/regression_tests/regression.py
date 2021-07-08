@@ -43,6 +43,7 @@ from regression_tests.test_RTI_theta_pinch_MHD import rti_thetapinch_mhd_setup
 from regression_tests.test_suydam import suydam_setup
 from regression_tests.test_taylor_couette import taylor_couette_setup
 from regression_tests.test_tokamak import tokamak_setup
+from regression_tests.test_tc_pinch import tc_pinch_setup
 
 from regression_tests.test_multi_constant_current import constant_current_setup
 from regression_tests.test_multi_coronal_fluxtube import coronal_tube_setup
@@ -80,6 +81,7 @@ tests_to_run = [
     rti_thetapinch_mhd_setup,
     suydam_setup,
     taylor_couette_setup,
+    tc_pinch_setup,
     tokamak_setup,
 ]
 multirun_tests = [

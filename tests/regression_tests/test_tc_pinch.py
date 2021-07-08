@@ -30,10 +30,9 @@ tc_pinch_setup = {
         "write_matrices": False,
     },
     "image_limits": [
-        {"xlims": (-1.3e4, 1.3e4), "ylims": (-1.6, 1.6)},
-        {"xlims": (-500, 500), "ylims": (-1.6, 1.6)},
-        {"xlims": (-10, 15), "ylims": (-1.6, 1.6)},
-        {"xlims": (0.01, 0.23), "ylims": (-1.6, 1.6)},
+        {"xlims": (-50, 50), "ylims": (-11, 1)},
+        {"xlims": (-2e-6, 2e-6), "ylims": (-1e-5, 3e-6)},
+        {"xlims": (-5e-7, 5e-7), "ylims": (-2e-7, 3e-6)},
     ],
 }
 parametrisation = dict(
