@@ -61,7 +61,7 @@ contains
     use mod_postprocessing, only: initialise_postprocessing
     use mod_eigenfunctions, only: initialise_eigenfunctions
     use mod_logging, only: print_logo
-    use mod_global_variables, only: viscosity, hall_mhd
+    use mod_global_variables, only: hall_mhd
 
     character(len=str_len)  :: parfile
     integer   :: nb_evs
@@ -88,11 +88,6 @@ contains
     call set_equilibrium()
 
     ! TODO: remove this warning when fully tested
-    if (viscosity) then
-      call log_message( &
-        "using viscous MHD, note that this is not yet fully tested!", level="warning" &
-      )
-    end if
     if (hall_mhd) then
       call log_message( &
         "using Hall MHD, note that this does not yet work properly!", level="warning" &
