@@ -28,3 +28,7 @@ No update of the pylbo reader needed
 === version 1.1.1 --> 1.1.2 ===
 1) added write_postprocessed between write_eigenfunctions and write_matrices in header
 2) postprocessed quantities added after eigenfunctions and before matrices (optional)
+
+=== version 1.1.2 --> 1.1.3 ===
+1) added viscosity_value to param_names after g
+1) added viscosity_value to data after g
