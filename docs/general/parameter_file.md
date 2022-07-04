@@ -75,8 +75,12 @@ This namelist includes all physics-related variables.
 | viscous_heating       | logical | whether to include viscous heating in the viscosity prescription | `.false.` |
 | viscosity_value       | real    | constant value for the viscosity | 0 |
 | incompressible        | logical | if `.true.`, uses an incompressible approximation | `.false.` |
+| electron_fraction     | real    | ratio of electron density to total density | 0.5 |
 | hall_mhd              | logical | inclusion of Hall effects | `.false.` |
-| elec_intertia         | logical | whether to include the electron intertia term in Ohm's law if `hall_mhd = .true.` | `.false.` |
+| hall_substitution     | logical | whether to use the substitution of the momentum equation in the induction equation as presented in the Hall paper or not | `.true` |
+| hall_dropoff          | logical | if `.true.`, smoothly drops off the Hall parameter profile to zero near the edges using a hyperbolic tangent profile  | `.false.` |
+| elec_inertia         | logical | whether to include the electron inertia term in Ohm's law if `hall_mhd = .true.` | `.false.` |
+| inertia_dropoff       | logical | if `.true.`, smoothly drops off the electron inertia parameter profile to zero near the edges using a hyperbolic tangent profile  | `.false.` |
 
 ## solvelist
 This namelist includes all solver-related variables. For more information, see [Solvers](../../general/solvers)
