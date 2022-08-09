@@ -3,6 +3,7 @@
 module mod_output
   use mod_global_variables, only: dp, str_len
   use mod_matrix_structure, only: matrix_t
+  use mod_settings, only: settings_t
   implicit none
 
   private
@@ -69,7 +70,7 @@ contains
   !!          values are saved to file in the format
   !!          <tt>(row_idx, column_idx, value)</tt>. @endnote
   !! @note    The extension <tt>".dat"</tt> is appended to the filename. @endnote
-  subroutine create_datfile(eigenvalues, matrix_A, matrix_B)
+  subroutine create_datfile(eigenvalues, matrix_A, matrix_B, settings)
     use mod_global_variables
     use mod_version, only: LEGOLAS_VERSION
     use mod_logging, only: log_message
@@ -86,6 +87,8 @@ contains
     type(matrix_t), intent(in) :: matrix_A
     !> the B-matrix
     type(matrix_t), intent(in) :: matrix_B
+    !> the settings object
+    type(settings_t), intent(in) :: settings
 
     real(dp)  :: b01_array(size(B_field % B02))
     character(len=str_len_arr)    :: param_names(34), equil_names(32)
@@ -162,7 +165,7 @@ contains
     ! Eigenfunction data [optional]
     if (write_eigenfunctions) then
       call log_message("writing eigenfunctions...", level="info")
-      write(dat_fh) size(state_vector), state_vector
+      write(dat_fh) settings%nb_eqs, settings%get_state_vector()
       write(dat_fh) ef_grid
       write(dat_fh) size(ef_written_flags), ef_written_flags
       write(dat_fh) size(ef_written_idxs), ef_written_idxs

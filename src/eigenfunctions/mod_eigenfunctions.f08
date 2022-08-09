@@ -3,8 +3,9 @@
 !! and interfaces to initialise and calculate the eigenfunctions and
 !! derived quantities.
 module mod_eigenfunctions
-  use mod_global_variables, only: dp, str_len_arr, ef_gridpts, state_vector
+  use mod_global_variables, only: dp, str_len_arr, ef_gridpts
   use mod_types, only: ef_type
+  use mod_settings, only: settings_t
   implicit none
 
   private
@@ -32,20 +33,23 @@ module mod_eigenfunctions
   type(ef_type), allocatable :: derived_eigenfunctions(:)
 
   interface
-    module subroutine initialise_base_eigenfunctions(nb_eigenfuncs)
+    module subroutine initialise_base_eigenfunctions(nb_eigenfuncs, state_vector)
       integer, intent(in) :: nb_eigenfuncs
+      character(len=*), intent(in) :: state_vector(:)
     end subroutine initialise_base_eigenfunctions
 
-    module subroutine initialise_derived_eigenfunctions(nb_eigenfuncs)
+    module subroutine initialise_derived_eigenfunctions(nb_eigenfuncs, state_vector)
       integer, intent(in) :: nb_eigenfuncs
+      character(len=*), intent(in) :: state_vector(:)
     end subroutine initialise_derived_eigenfunctions
 
     module subroutine calculate_base_eigenfunctions(right_eigenvectors)
       complex(dp), intent(in) :: right_eigenvectors(:, :)
     end subroutine calculate_base_eigenfunctions
 
-    module subroutine calculate_derived_eigenfunctions(right_eigenvectors)
+    module subroutine calculate_derived_eigenfunctions(right_eigenvectors, state_vector)
       complex(dp), intent(in) :: right_eigenvectors(:, :)
+      character(len=*), intent(in) :: state_vector(:)
     end subroutine calculate_derived_eigenfunctions
   end interface
 
@@ -91,42 +95,48 @@ contains
   !> Initialises the eigenfunctions based on an array of eigenvalues.
   !! Before initialising all arrays we check which subset of eigenvalues, if any,
   !! needs its eigenfunctions saved.
-  subroutine initialise_eigenfunctions(omega)
+  subroutine initialise_eigenfunctions(omega, state_vector)
     use mod_global_variables, only: write_derived_eigenfunctions
 
     !> the array of calculated eigenvalues
     complex(dp), intent(in) :: omega(:)
+    !> the current state vector
+    character(len=*), intent(in) :: state_vector(:)
 
     call select_eigenfunctions_to_save(omega)
 
     call assemble_eigenfunction_grid()
-    call initialise_base_eigenfunctions(size(ef_written_idxs))
+    call initialise_base_eigenfunctions(size(ef_written_idxs), state_vector)
     if (write_derived_eigenfunctions) then
-      call initialise_derived_eigenfunctions(size(ef_written_idxs))
+      call initialise_derived_eigenfunctions(size(ef_written_idxs), state_vector)
     end if
   end subroutine initialise_eigenfunctions
 
 
   !> Calculates both the base eigenfunctions and the derived quantities thereof
   !! based on a 2D array of right eigenvectors.
-  subroutine calculate_eigenfunctions(right_eigenvectors)
+  subroutine calculate_eigenfunctions(right_eigenvectors, state_vector)
     complex(dp), intent(in) :: right_eigenvectors(:, :)
+    character(len=*), intent(in) :: state_vector(:)
 
     call calculate_base_eigenfunctions(right_eigenvectors)
     if (derived_efs_initialised) then
-      call calculate_derived_eigenfunctions(right_eigenvectors)
+      call calculate_derived_eigenfunctions(right_eigenvectors, state_vector)
     end if
   end subroutine calculate_eigenfunctions
 
 
   !> Returns the full set of eigenfunctions corresponding to the given eigenfunction
   !! name.
-  function retrieve_eigenfunctions(name) result(eigenfunctions)
+  function retrieve_eigenfunctions(name, state_vector) result(eigenfunctions)
     use mod_logging, only: log_message
     use mod_get_indices, only: get_index
 
     !> name of the eigenfunction to retrieve
-    character(len=*), intent(in)  :: name
+    character(len=*), intent(in) :: name
+    !> state vector to check against
+    character(len=*), intent(in) :: state_vector(:)
+
     !> the eigenfunctions corresponding to the given name
     type(ef_type) :: eigenfunctions
     integer :: name_idx
@@ -160,17 +170,21 @@ contains
   !! @note: this routine is needed apart from <tt>retrieve_eigenfunctions</tt>
   !!        because Fortran does not allow access to a derived type's attribute
   !!        directly through the result of a function call. @endnote
-  function retrieve_eigenfunction_from_index(name, ef_index) result(eigenfunction)
+  function retrieve_eigenfunction_from_index( &
+    name, ef_index, state_vector &
+  ) result(eigenfunction)
     !> name of the eigenfunction to retrieve
     character(len=*), intent(in)  :: name
     !> index of the eigenfunction to retrieve
     integer, intent(in) :: ef_index
+    !> state vector to search eigenfunction in
+    character(len=*), intent(in) :: state_vector(:)
     !> the eigenfunction corresponding to the given name and index
     complex(dp) :: eigenfunction(size(ef_grid))
     !> all eigenfunctions corresponding to the given name
     type(ef_type) :: eigenfunctions
 
-    eigenfunctions = retrieve_eigenfunctions(name=name)
+    eigenfunctions = retrieve_eigenfunctions(name=name, state_vector=state_vector)
     eigenfunction = eigenfunctions%quantities(:, ef_index)
   end function retrieve_eigenfunction_from_index
 

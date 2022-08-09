@@ -14,7 +14,11 @@ program legolas
   use mod_output, only: datfile_name, create_datfile
   use mod_logging, only: log_message, str, print_console_info, print_whitespace
   use mod_inspections, only: handle_spurious_eigenvalues
+  use mod_settings, only: settings_t
   implicit none
+
+  !> main settings object
+  type(settings_t) :: settings
 
   !> A matrix in eigenvalue problem wBX = AX
   type(matrix_t) :: matrix_A
@@ -28,7 +32,7 @@ program legolas
   call initialisation()
   call print_console_info()
 
-  call build_matrices(matrix_B, matrix_A)
+  call build_matrices(matrix_B, matrix_A, settings)
 
   if (.not. dry_run) then
     call log_message("solving eigenvalue problem...", level="info")
@@ -43,7 +47,7 @@ program legolas
   call handle_spurious_eigenvalues(omega)
 
   call create_eigenfunctions()
-  call create_datfile(omega, matrix_A, matrix_B)
+  call create_datfile(omega, matrix_A, matrix_B, settings)
 
   call cleanup()
 
@@ -59,13 +63,13 @@ contains
   !! and eigenfunctions are initialised and the equilibrium is set.
   subroutine initialisation()
     use mod_global_variables, only: initialise_globals, dim_matrix, &
-      solver, number_of_eigenvalues, write_eigenfunctions, gamma, set_gamma, NaN, &
-      state_vector
+      solver, number_of_eigenvalues, write_eigenfunctions, gamma, set_gamma, NaN
     use mod_matrix_structure, only: new_matrix
     use mod_input, only: read_parfile, get_parfile
     use mod_equilibrium, only: initialise_equilibrium, set_equilibrium, hall_field
     use mod_logging, only: print_logo
     use mod_global_variables, only: hall_mhd, hall_substitution, elec_inertia, x_end, x_start
+    use mod_settings, only: new_settings
 
     character(len=5*str_len)  :: parfile
     integer   :: nb_evs
@@ -73,13 +77,18 @@ contains
     real(dp) :: ratio
     ratio = NaN
 
+    settings = new_settings()
+
     call initialise_globals()
     call get_parfile(parfile)
-    call read_parfile(parfile)
+    call read_parfile(parfile, settings)
     call set_gamma(gamma)
 
     call print_logo()
-    call log_message("the state vector is set to " // str(state_vector), level="info")
+    call log_message( &
+      "the state vector is set to " // str(settings%get_state_vector()), &
+      level="info" &
+    )
 
     if (solver == "arnoldi") then
       nb_evs = number_of_eigenvalues
@@ -132,8 +141,8 @@ contains
     use mod_eigenfunctions, only: initialise_eigenfunctions, calculate_eigenfunctions
 
     if (write_eigenfunctions) then
-      call initialise_eigenfunctions(omega)
-      call calculate_eigenfunctions(eigenvecs_right)
+      call initialise_eigenfunctions(omega, settings%get_state_vector())
+      call calculate_eigenfunctions(eigenvecs_right, settings%get_state_vector())
     end if
   end subroutine create_eigenfunctions
 

@@ -6,6 +6,7 @@ set (sources
         dataIO/mod_exceptions.f08
         dataIO/mod_logging.f08
         mod_physical_constants.f08
+        state/mod_settings.f08
         utils/mod_get_indices.f08
         matrices/datastructure/mod_matrix_node.f08
         matrices/datastructure/mod_matrix_row.f08

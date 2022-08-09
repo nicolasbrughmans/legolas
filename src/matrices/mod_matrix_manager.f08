@@ -84,19 +84,22 @@ module mod_matrix_manager
 
 contains
 
-  subroutine build_matrices(matrix_B, matrix_A)
+  subroutine build_matrices(matrix_B, matrix_A, settings)
     use mod_global_variables, only: gridpts, dim_quadblock, dim_subblock, &
         n_gauss, gaussian_weights, flow, resistivity, radiative_cooling, &
         thermal_conduction, viscosity, hall_mhd
     use mod_spline_functions, only: quadratic_factors, quadratic_factors_deriv, &
       cubic_factors, cubic_factors_deriv
     use mod_matrix_structure, only: matrix_t
+    use mod_settings, only: settings_t
     use mod_boundary_manager, only: apply_boundary_conditions
 
     !> the B-matrix
     type(matrix_t), intent(inout) :: matrix_B
     !> the A-matrix
     type(matrix_t), intent(inout) :: matrix_A
+    !> the settings object
+    type(settings_t), intent(in) :: settings
 
     !> quadblock for the A-matrix
     complex(dp) :: quadblock_A(dim_quadblock, dim_quadblock)
@@ -185,7 +188,7 @@ contains
       quadblock_idx = quadblock_idx + dim_subblock
     end do
 
-    call apply_boundary_conditions(matrix_A, matrix_B)
+    call apply_boundary_conditions(matrix_A, matrix_B, settings)
   end subroutine build_matrices
 
 
