@@ -25,7 +25,7 @@ contains
       idxs=get_subblock_index( &
         variables=[character(len=3) :: "rho", "v2", "v3", "T", "a1"], &
         state_vector=settings%get_state_vector(), &
-        dim_subblock=settings%get_dim_subblock(), &
+        dim_subblock=settings%dims%get_dim_subblock(), &
         odd=.true., &
         edge="left" &
       ), &
@@ -49,7 +49,7 @@ contains
       idxs=get_subblock_index( &
         variables=cubic_vars_to_zero_out, &
         state_vector=settings%get_state_vector(), &
-        dim_subblock=settings%get_dim_subblock(), &
+        dim_subblock=settings%dims%get_dim_subblock(), &
         odd=.true., &
         edge="left" &
       ), &
@@ -63,7 +63,7 @@ contains
         idxs=get_subblock_index( &
           variables=["T"], &
           state_vector=settings%get_state_vector(), &
-          dim_subblock=settings%get_dim_subblock(), &
+          dim_subblock=settings%dims%get_dim_subblock(), &
           odd=.false., &
           edge="left" &
         ), &
@@ -78,7 +78,7 @@ contains
         idxs=get_subblock_index( &
           variables=["v2", "v3"], &
           state_vector=settings%get_state_vector(), &
-          dim_subblock=settings%get_dim_subblock(), &
+          dim_subblock=settings%dims%get_dim_subblock(), &
           odd=.false., &
           edge="left" &
         ), &
@@ -116,7 +116,7 @@ contains
       idxs=ishift + get_subblock_index( &
         variables=cubic_vars_to_zero_out, &
         state_vector=settings%get_state_vector(), &
-        dim_subblock=settings%get_dim_subblock(), &
+        dim_subblock=settings%dims%get_dim_subblock(), &
         odd=.true., &
         edge="right" &
       ), &
@@ -130,7 +130,7 @@ contains
         idxs=ishift + get_subblock_index( &
           variables=["T"], &
           state_vector=settings%get_state_vector(), &
-          dim_subblock=settings%get_dim_subblock(), &
+          dim_subblock=settings%dims%get_dim_subblock(), &
           odd=.false., &
           edge="right" &
         ), &
@@ -144,7 +144,7 @@ contains
         idxs=ishift + get_subblock_index( &
           variables=["v2", "v3"], &
           state_vector=settings%get_state_vector(), &
-          dim_subblock=settings%get_dim_subblock(), &
+          dim_subblock=settings%dims%get_dim_subblock(), &
           odd=.false., &
           edge="right" &
         ), &
