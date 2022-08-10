@@ -1,19 +1,36 @@
 module mod_test_subblock
   use mod_suite_utils
   use funit
+  use mod_settings, only: settings_t
   implicit none
+
+  type(settings_t) :: settings
 
 contains
 
+  @before
+  subroutine init_test()
+    settings = create_settings(physics_type="mhd")
+  end subroutine init_test
+
+  @after
+  subroutine teardown_test()
+    call settings%delete()
+  end subroutine teardown_test
+
   @test
   subroutine test_subblock_fill()
-    use mod_global_variables, only: dim_quadblock
     use mod_make_subblock, only: subblock
 
-    complex(dp) :: quadblock(dim_quadblock, dim_quadblock)
+    complex(dp), allocatable :: quadblock(:, :)
     complex(dp) :: factors(2), val1, val2
     real(dp)    :: spline1(4), spline2(4), weight
     integer     :: positions(2, 2), i, idx1(16), idx2(16)
+    integer :: dim_subblock, dim_quadblock
+
+    dim_subblock = settings%dims%get_dim_subblock()
+    dim_quadblock = settings%dims%get_dim_quadblock()
+    allocate(quadblock(dim_quadblock, dim_quadblock))
 
     call set_name("filling subblock")
     quadblock = (0.0d0, 0.0d0)
@@ -28,7 +45,7 @@ contains
     weight = 1.0d0
     spline1 = 1.0d0
     spline2 = 1.0d0
-    call subblock(quadblock, factors, positions, weight, spline1, spline2)
+    call subblock(quadblock, factors, positions, weight, spline1, spline2, dim_subblock)
     ! first factor
     idx1 = (/ 7, 7, 8, 8,  7,  7,  8,  8, 23, 23, 24, 24, 23, 23, 24, 24 /)
     idx2 = (/ 5, 6, 5, 6, 21, 22, 21, 22,  5,  6,  5,  6, 21, 22, 21, 22 /)

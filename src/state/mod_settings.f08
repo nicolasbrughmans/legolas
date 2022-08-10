@@ -81,6 +81,7 @@ contains
       this%state_vector = [character(len=str_len_arr) :: "rho", "v1", "v2", "v3", "T"]
     case default
       call log_message("Unknown physics_type: " // physics_type, level="error")
+      return
     end select
     this%nb_eqs = size(this%state_vector)
   end subroutine set_state_vector
@@ -102,8 +103,8 @@ contains
     !> the settings object to delete
     class(settings_t), intent(inout) :: this
 
-    deallocate(this%state_vector)
-    deallocate(this%physics_type)
+    if (allocated(this%state_vector)) deallocate(this%state_vector)
+    if (allocated(this%physics_type)) deallocate(this%physics_type)
   end subroutine delete
 
 end module mod_settings

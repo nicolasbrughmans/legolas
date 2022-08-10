@@ -47,13 +47,14 @@ contains
     call set_gridpts(2)
     call reset_fields(init_fields=.true.)
     T_field % T0 = [0.5d0, 1.0d0, 1.5d0, 3.0d0]
+    call set_resistivity_values(T_field, eta_field)
+
     etavals = [ &
       5.65272704d-18, 1.99854081d-18, 1.08786783d-18, 3.84619359d-19 &
     ] / unit_resistivity
     detavals = [ &
       -1.69581811d-23, -2.99781122d-24, -1.08786783d-24, -1.92309679d-25 &
     ] / unit_deta_dT
-    call set_resistivity_values(T_field, eta_field)
 
     @assertEqual(etavals, eta_field % eta, tolerance=1.0d-8)
     @assertEqual(detavals, eta_field % d_eta_dT, tolerance=1.0d-8)

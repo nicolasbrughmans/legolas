@@ -5,6 +5,7 @@ module mod_test_solvers_arpack_shift_invert
   use mod_matrix_structure, only: matrix_t, new_matrix
   use mod_global_variables, only: sigma
     use mod_solvers, only: solve_evp
+  use mod_settings, only: settings_t
   implicit none
 
   type(matrix_t) :: amat
@@ -25,6 +26,7 @@ module mod_test_solvers_arpack_shift_invert
     (1.4744682873098567d0, 1.7884905288463375d0), &
     (2.72570513179907d0, 3.60539530105732d0) &
   ]
+  type(settings_t) :: settings
 
 
 contains
@@ -40,12 +42,14 @@ contains
     maxiter = 500
     which_eigenvalues = "LM"
     call create_matrices()
+    settings = create_settings(physics_type="mhd")
   end subroutine init_test
 
   @after
   subroutine tear_down()
     call amat%delete_matrix()
     call bmat%delete_matrix()
+    call settings%delete()
   end subroutine tear_down
 
 
@@ -88,7 +92,7 @@ contains
     integer :: i
     call set_name("solving EVP, arpack shift-invert (sigma = 0)")
     sigma = (0.0d0, 0.0d0)
-    call solve_evp(amat, bmat, actual, vr)
+    call solve_evp(amat, bmat, actual, vr, settings)
     call sort_complex_array(actual)
     idxs = [1, 2, 3, 5]
     do i = 1, nb_eigenvals
@@ -102,7 +106,7 @@ contains
     integer :: i
     call set_name("solving EVP, arpack shift-invert (sigma = 1.0)")
     sigma = (1.0d0, 0.0d0)
-    call solve_evp(amat, bmat, actual, vr)
+    call solve_evp(amat, bmat, actual, vr, settings)
     call sort_complex_array(actual)
     idxs = [3, 5, 6, 8]
     do i = 1, nb_eigenvals
@@ -116,7 +120,7 @@ contains
     integer :: i
     call set_name("solving EVP, arpack shift-invert (sigma = 0.5i)")
     sigma = (0.0d0, 0.5d0)
-    call solve_evp(amat, bmat, actual, vr)
+    call solve_evp(amat, bmat, actual, vr, settings)
     call sort_complex_array(actual)
     idxs = [3, 4, 5, 6]
     do i = 1, nb_eigenvals
@@ -130,7 +134,7 @@ contains
     integer :: i
     call set_name("solving EVP, arpack shift-invert (sigma = -1 + 0.2i)")
     sigma = (-1.0d0, 0.2d0)
-    call solve_evp(amat, bmat, actual, vr)
+    call solve_evp(amat, bmat, actual, vr, settings)
     call sort_complex_array(actual)
     idxs = [1, 2, 3, 5]
     do i = 1, nb_eigenvals
@@ -144,7 +148,7 @@ contains
     integer :: i
     call set_name("solving EVP, arpack shift-invert (sigma = -0.5 - 0.35i)")
     sigma = (-0.5d0, -0.35d0)
-    call solve_evp(amat, bmat, actual, vr)
+    call solve_evp(amat, bmat, actual, vr, settings)
     call sort_complex_array(actual)
     idxs = [1, 2, 3, 5]
     do i = 1, nb_eigenvals
@@ -158,7 +162,7 @@ contains
     integer :: i
     call set_name("solving EVP, arpack shift-invert (sigma = 10 + 2i)")
     sigma = (10.0d0, 2.0d0)
-    call solve_evp(amat, bmat, actual, vr)
+    call solve_evp(amat, bmat, actual, vr, settings)
     call sort_complex_array(actual)
     idxs = [7, 8, 9, 10]
     do i = 1, nb_eigenvals

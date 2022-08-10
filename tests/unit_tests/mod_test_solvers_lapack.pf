@@ -5,6 +5,7 @@ module mod_test_solvers_lapack
   use mod_solvers, only: solve_evp
   use mod_matrix_structure, only: matrix_t, new_matrix
   use mod_transform_matrix, only: array_to_matrix
+  use mod_settings, only: settings_t
   implicit none
 
   real(dp), parameter :: bmat_array(5, 5) = reshape( &
@@ -30,6 +31,7 @@ module mod_test_solvers_lapack
   type(matrix_t) :: amat, bmat, idmat
   complex(dp) :: vr(5, 5)
   complex(dp) :: eigenvals(5), expected(5)
+  type(settings_t) :: settings
 
 
 contains
@@ -40,6 +42,7 @@ contains
     eigenvals = (0.0d0, 0.0d0)
     expected = (0.0d0, 0.0d0)
     write_eigenfunctions = .false.
+    settings = create_settings(physics_type="mhd")
     call set_matrices()
   end subroutine init_test
 
@@ -49,6 +52,7 @@ contains
     call bmat%delete_matrix()
     call amat%delete_matrix()
     call idmat%delete_matrix()
+    call settings%delete()
   end subroutine tear_down
 
 
@@ -68,7 +72,7 @@ contains
   subroutine test_unknown_solver()
     call set_name("solver (unknown)")
     solver = "unknown"
-    call solve_evp(amat, bmat, eigenvals, vr)
+    call solve_evp(amat, bmat, eigenvals, vr, settings)
     @assertExceptionRaised("unknown solver passed: unknown")
   end subroutine test_unknown_solver
 
@@ -85,7 +89,7 @@ contains
       (0.663744370985872d0, -5.82933550828359d0), &
       (2.230448768912873d0, 2.819983261900966d0) &
     ]
-    call solve_evp(amat, idmat, eigenvals, vr)
+    call solve_evp(amat, idmat, eigenvals, vr, settings)
     call sort_complex_array(eigenvals)
     @assertEqual(expected, eigenvals, tolerance=TOL)
   end subroutine test_lapack_qr_simple
@@ -104,7 +108,7 @@ contains
       (0.6276596796722511d0, 0.48642862257574954d0), &
       (0.6282488405860116d0, -0.23788823614350615d0) &
     ]
-    call solve_evp(amat, bmat, eigenvals, vr)
+    call solve_evp(amat, bmat, eigenvals, vr, settings)
     call sort_complex_array(eigenvals)
     @assertEqual(expected, eigenvals, tolerance=TOL)
   end subroutine test_lapack_qr_general
@@ -122,7 +126,7 @@ contains
       (0.663744370985872d0, -5.82933550828359d0), &
       (2.230448768912873d0, 2.819983261900966d0) &
     ]
-    call solve_evp(amat, idmat, eigenvals, vr)
+    call solve_evp(amat, idmat, eigenvals, vr, settings)
     call sort_complex_array(eigenvals)
     @assertEqual(expected, eigenvals, tolerance=TOL)
   end subroutine test_lapack_qz_simple
@@ -140,7 +144,7 @@ contains
       (0.6276596796722511d0, 0.48642862257574954d0), &
       (0.6282488405860116d0, -0.23788823614350615d0) &
     ]
-    call solve_evp(amat, bmat, eigenvals, vr)
+    call solve_evp(amat, bmat, eigenvals, vr, settings)
     call sort_complex_array(eigenvals)
     @assertEqual(expected, eigenvals, tolerance=TOL)
   end subroutine test_lapack_qz_general

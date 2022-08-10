@@ -4,11 +4,13 @@ module mod_test_eigenfunctions
   use mod_eigenfunctions
   use mod_global_variables
   use mod_types, only: ef_type
+  use mod_settings, only: settings_t
   implicit none
 
   complex(dp) :: eigenvals(25)
   complex(dp), allocatable :: eigenvectors(:, :)
   type(ef_type) :: ef_test
+  type(settings_t) :: settings
 
 contains
 
@@ -43,14 +45,18 @@ contains
     end if
     B_field % B02 = 1.0d0
     B_field % B03 = 2.0d0
-    call initialise_eigenfunctions(omega=eigenvals)
+    call initialise_eigenfunctions( &
+      omega=eigenvals, state_vector=settings%get_state_vector() &
+    )
   end subroutine use_bfield
 
 
   subroutine enable_derived_efs()
     write_derived_eigenfunctions = .true.
     call eigenfunctions_clean()
-    call initialise_eigenfunctions(omega=eigenvals)
+    call initialise_eigenfunctions( &
+      omega=eigenvals, state_vector=settings%get_state_vector() &
+    )
   end subroutine enable_derived_efs
 
 
@@ -60,6 +66,8 @@ contains
 
     call reset_globals()
     call reset_fields(init_fields=.true.)
+    settings = create_settings(physics_type="mhd")
+    call settings%dims%set_dim_matrix(gridpts=20)
     call create_test_grid(pts=20, geom='Cartesian')
     ! creates a square grid between (-2, 2) and (2, -2)
     pos = 1
@@ -69,13 +77,16 @@ contains
         pos = pos + 1
       end do
     end do
-    call initialise_eigenfunctions(omega=eigenvals)
+    call initialise_eigenfunctions( &
+      omega=eigenvals, state_vector=settings%get_state_vector() &
+    )
   end subroutine init_test
 
 
   @after
   subroutine teardown_test()
     call clean_up()
+    call settings%delete()
     if (allocated(eigenvectors)) then
       deallocate(eigenvectors)
     end if
@@ -100,7 +111,9 @@ contains
     call set_name("eigenfunctions - subset selection")
     call use_subset()
     call eigenfunctions_clean()
-    call initialise_eigenfunctions(omega=eigenvals)
+    call initialise_eigenfunctions( &
+      omega=eigenvals, state_vector=settings%get_state_vector() &
+    )
     actual_shape = shape(base_eigenfunctions(1)%quantities)
     @assertEqual([ef_gridpts, 4], actual_shape)
   end subroutine test_select_eigenfunction_subset
@@ -111,7 +124,9 @@ contains
     call set_name("eigenfunctions - subset indices")
     call use_subset()
     call eigenfunctions_clean()
-    call initialise_eigenfunctions(omega=eigenvals)
+    call initialise_eigenfunctions( &
+      omega=eigenvals, state_vector=settings%get_state_vector() &
+    )
     @assertEqual(4, size(ef_written_idxs))
     @assertEqual([5, 9, 10, 15], ef_written_idxs)
   end subroutine test_eigenfunction_subset_idxs
@@ -148,7 +163,9 @@ contains
   @test
   subroutine test_ef_retrieval_invalid_name()
     call set_name("eigenfunctions - get from name (invalid)")
-    ef_test = retrieve_eigenfunctions(name="unknown")
+    ef_test = retrieve_eigenfunctions( &
+      name="unknown", state_vector=settings%get_state_vector() &
+    )
     @assertExceptionRaised("could not retrieve eigenfunction with name unknown")
   end subroutine test_ef_retrieval_invalid_name
 
@@ -156,14 +173,18 @@ contains
   @test
   subroutine test_ef_retrieval_base_ef()
     call set_name("eigenfunctions - get from name (base ef)")
-    ef_test = retrieve_eigenfunctions(name="rho")
+    ef_test = retrieve_eigenfunctions( &
+      name="rho", state_vector=settings%get_state_vector() &
+    )
   end subroutine test_ef_retrieval_base_ef
 
 
   @test
   subroutine test_ef_retrieval_no_derived_efs()
     call set_name("eigenfunctions - get from name (no derived present)")
-    ef_test = retrieve_eigenfunctions(name="S")
+    ef_test = retrieve_eigenfunctions( &
+      name="S", state_vector=settings%get_state_vector() &
+    )
     @assertExceptionRaised("could not retrieve eigenfunction with name S")
   end subroutine test_ef_retrieval_no_derived_efs
 
@@ -172,7 +193,9 @@ contains
   subroutine test_ef_retrieval_derived_efs()
     call set_name("eigenfunctions - get from name (derived)")
     call enable_derived_efs()
-    ef_test = retrieve_eigenfunctions(name="S")
+    ef_test = retrieve_eigenfunctions( &
+      name="S", state_vector=settings%get_state_vector() &
+    )
   end subroutine test_ef_retrieval_derived_efs
 
 
@@ -181,9 +204,15 @@ contains
     complex(dp) :: eigenfunc(ef_gridpts)
 
     call set_name("eigenfunctions - get from index")
-    call create_eigenvectors(dim_matrix)
-    call calculate_eigenfunctions(right_eigenvectors=eigenvectors)
-    eigenfunc = retrieve_eigenfunction_from_index(name="rho", ef_index=5)
+    call create_eigenvectors(settings%dims%get_dim_matrix())
+    call calculate_eigenfunctions( &
+      right_eigenvectors=eigenvectors, &
+      state_vector=settings%get_state_vector(), &
+      dims=settings%dims &
+    )
+    eigenfunc = retrieve_eigenfunction_from_index( &
+      name="rho", ef_index=5, state_vector=settings%get_state_vector() &
+    )
   end subroutine test_ef_retrieval_index
 
 
@@ -193,9 +222,15 @@ contains
 
     call set_name("eigenfunctions - get from index (invalid name)")
     call enable_derived_efs()
-    call create_eigenvectors(dim_matrix)
-    call calculate_eigenfunctions(right_eigenvectors=eigenvectors)
-    eigenfunc = retrieve_eigenfunction_from_index(name="S", ef_index=5)
+    call create_eigenvectors(settings%dims%get_dim_matrix())
+    call calculate_eigenfunctions( &
+      right_eigenvectors=eigenvectors, &
+      state_vector=settings%get_state_vector(), &
+      dims=settings%dims &
+    )
+    eigenfunc = retrieve_eigenfunction_from_index( &
+      name="S", ef_index=5, state_vector=settings%get_state_vector() &
+    )
   end subroutine test_ef_retrieval_index_derived_ef
 
 
@@ -229,8 +264,12 @@ contains
     call set_name("eigenfunctions - pp sizes with bfield")
     call enable_derived_efs()
     call use_bfield(use_b01=.false.)
-    call create_eigenvectors(dim_matrix)
-    call calculate_eigenfunctions(right_eigenvectors=eigenvectors)
+    call create_eigenvectors(settings%dims%get_dim_matrix())
+    call calculate_eigenfunctions( &
+      right_eigenvectors=eigenvectors, &
+      state_vector=settings%get_state_vector(), &
+      dims=settings%dims &
+    )
     @assertEqual(size(derived_ef_names), size(derived_eigenfunctions))
     @assertTrue((any(derived_ef_names == "B_para")))
   end subroutine test_eigenfunction_calculations_with_bfield

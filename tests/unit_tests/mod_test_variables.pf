@@ -1,8 +1,11 @@
 module mod_test_variables
   use mod_global_variables
   use mod_suite_utils
+  use mod_settings, only: settings_t
   use funit
   implicit none
+
+  type(settings_t) :: settings
 
 contains
 
@@ -10,12 +13,13 @@ contains
   @before
   subroutine init_test()
     call reset_globals()
+    settings = create_settings(physics_type="mhd")
   end subroutine init_test
 
 
   @after
   subroutine teardown_test()
-    ! nothing to do
+    call settings%delete()
   end subroutine teardown_test
 
 
@@ -47,13 +51,26 @@ contains
   end subroutine test_gridpts
 
   @test
-  subroutine test_matrix_properties_mhd()
-    call set_name("matrix properties MHD")
-    call set_matrix_properties(points=10)
-    @assertEqual(size(state_vector), 8)
-    @assertEqual(16, dim_subblock)
-    @assertEqual(32, dim_quadblock)
-    @assertEqual(160, dim_matrix)
-  end subroutine test_matrix_properties_mhd
+  subroutine test_properties_mhd()
+    call set_name("properties MHD")
+    call settings%dims%set_dim_matrix(gridpts=10)
+    @assertEqual(size(settings%get_state_vector()), 8)
+    @assertEqual(16, settings%dims%get_dim_subblock())
+    @assertEqual(32, settings%dims%get_dim_quadblock())
+    @assertEqual(160, settings%dims%get_dim_matrix())
+  end subroutine test_properties_mhd
+
+
+  @test
+  subroutine test_properties_hd()
+    call set_name("properties HD")
+    call settings%delete()
+    settings = create_settings(physics_type="hydro")
+    call settings%dims%set_dim_matrix(gridpts=10)
+    @assertEqual(size(settings%get_state_vector()), 5)
+    @assertEqual(10, settings%dims%get_dim_subblock())
+    @assertEqual(20, settings%dims%get_dim_quadblock())
+    @assertEqual(100, settings%dims%get_dim_matrix())
+  end subroutine test_properties_hd
 
 end module mod_test_variables

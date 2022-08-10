@@ -25,6 +25,17 @@ contains
   end subroutine reset_globals
 
 
+  function create_settings(physics_type) result(settings)
+    use mod_settings, only: settings_t, new_settings
+
+    character(len=*), intent(in) :: physics_type
+    type(settings_t) :: settings
+
+    settings = new_settings()
+    call settings%set_physics_type(physics_type)
+  end function create_settings
+
+
   subroutine reset_fields(init_fields)
     use mod_equilibrium, only: rho_field, equilibrium_clean, initialise_equilibrium
 
