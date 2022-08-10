@@ -22,58 +22,85 @@ module mod_matrix_manager
   integer, allocatable  :: positions(:, :)
 
   interface
-    module subroutine add_bmatrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_bmatrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_bmatrix_terms
 
-    module subroutine add_regular_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_regular_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_regular_matrix_terms
 
-    module subroutine add_flow_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_flow_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_flow_matrix_terms
 
-    module subroutine add_resistive_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_resistive_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_resistive_matrix_terms
 
-    module subroutine add_cooling_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_cooling_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_cooling_matrix_terms
 
-    module subroutine add_conduction_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_conduction_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_conduction_matrix_terms
 
-    module subroutine add_viscosity_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_viscosity_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_viscosity_matrix_terms
 
-    module subroutine add_hall_matrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_hall_matrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_hall_matrix_terms
 
-    module subroutine add_hall_bmatrix_terms(gauss_idx, current_weight, quadblock)
+    module subroutine add_hall_bmatrix_terms( &
+        gauss_idx, current_weight, quadblock, dim_subblock &
+      )
       integer, intent(in)   :: gauss_idx
       real(dp), intent(in)  :: current_weight
       complex(dp), intent(inout)  :: quadblock(:, :)
+      integer, intent(in) :: dim_subblock
     end subroutine add_hall_bmatrix_terms
   end interface
 
@@ -85,7 +112,7 @@ module mod_matrix_manager
 contains
 
   subroutine build_matrices(matrix_B, matrix_A, settings)
-    use mod_global_variables, only: gridpts, dim_quadblock, dim_subblock, &
+    use mod_global_variables, only: gridpts, &
         n_gauss, gaussian_weights, flow, resistivity, radiative_cooling, &
         thermal_conduction, viscosity, hall_mhd
     use mod_spline_functions, only: quadratic_factors, quadratic_factors_deriv, &
@@ -102,9 +129,9 @@ contains
     type(settings_t), intent(in) :: settings
 
     !> quadblock for the A-matrix
-    complex(dp) :: quadblock_A(dim_quadblock, dim_quadblock)
+    complex(dp), allocatable :: quadblock_A(:, :)
     !> quadblock for the B-matrix
-    complex(dp) :: quadblock_B(dim_quadblock, dim_quadblock)
+    complex(dp), allocatable :: quadblock_B(:, :)
     !> left side of current interval
     real(dp)  :: x_left
     !> right side of current interval
@@ -116,9 +143,14 @@ contains
 
     integer :: i, j, k, l, idx1, idx2
     integer :: quadblock_idx, gauss_idx
+    integer :: dim_subblock, dim_quadblock
 
     ! used to shift the quadblock along the main diagonal
     quadblock_idx = 0
+    dim_subblock = settings%dims%get_dim_subblock()
+    dim_quadblock = settings%dims%get_dim_quadblock()
+    allocate(quadblock_A(dim_quadblock, dim_quadblock))
+    allocate(quadblock_B(dim_quadblock, dim_quadblock))
 
     do i = 1, gridpts - 1
       ! reset quadblocks
@@ -143,26 +175,34 @@ contains
         call cubic_factors_deriv(current_x_gauss, x_left, x_right, dh_cubic)
 
         ! get matrix elements
-        call add_bmatrix_terms(gauss_idx, current_weight, quadblock_B)
-        call add_regular_matrix_terms(gauss_idx, current_weight, quadblock_A)
-        if (flow) then
-          call add_flow_matrix_terms(gauss_idx, current_weight, quadblock_A)
-        end if
-        if (resistivity) then
-          call add_resistive_matrix_terms(gauss_idx, current_weight, quadblock_A)
-        end if
-        if (radiative_cooling) then
-          call add_cooling_matrix_terms(gauss_idx, current_weight, quadblock_A)
-        end if
-        if (thermal_conduction) then
-          call add_conduction_matrix_terms(gauss_idx, current_weight, quadblock_A)
-        end if
-        if (viscosity) then
-          call add_viscosity_matrix_terms(gauss_idx, current_weight, quadblock_A)
-        end if
+        call add_bmatrix_terms( &
+          gauss_idx, current_weight, quadblock_B, dim_subblock &
+        )
+        call add_regular_matrix_terms( &
+          gauss_idx, current_weight, quadblock_A, dim_subblock &
+        )
+        if (flow) call add_flow_matrix_terms( &
+          gauss_idx, current_weight, quadblock_A, dim_subblock &
+        )
+        if (resistivity) call add_resistive_matrix_terms( &
+          gauss_idx, current_weight, quadblock_A, dim_subblock &
+        )
+        if (radiative_cooling) call add_cooling_matrix_terms( &
+          gauss_idx, current_weight, quadblock_A, dim_subblock &
+        )
+        if (thermal_conduction) call add_conduction_matrix_terms( &
+          gauss_idx, current_weight, quadblock_A, dim_subblock &
+        )
+        if (viscosity) call add_viscosity_matrix_terms( &
+          gauss_idx, current_weight, quadblock_A, dim_subblock &
+        )
         if (hall_mhd) then
-          call add_hall_matrix_terms(gauss_idx, current_weight, quadblock_A)
-          call add_hall_bmatrix_terms(gauss_idx, current_weight, quadblock_B)
+          call add_hall_matrix_terms( &
+            gauss_idx, current_weight, quadblock_A, dim_subblock &
+          )
+          call add_hall_bmatrix_terms( &
+            gauss_idx, current_weight, quadblock_B, dim_subblock &
+          )
         end if
       end do
 
@@ -185,8 +225,11 @@ contains
           call matrix_A%add_element(row=idx1, column=idx2, element=quadblock_A(k, l))
         end do
       end do
-      quadblock_idx = quadblock_idx + dim_subblock
+      quadblock_idx = quadblock_idx + settings%dims%get_dim_subblock()
     end do
+
+    deallocate(quadblock_A)
+    deallocate(quadblock_B)
 
     call apply_boundary_conditions(matrix_A, matrix_B, settings)
   end subroutine build_matrices

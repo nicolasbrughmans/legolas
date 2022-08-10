@@ -5,16 +5,20 @@ module mod_settings_dims
 
   type, public :: dims_t
     !> dimension of one finite element integral block
-    integer, private :: dim_integralblock
+    integer, private :: dim_integralblock = 0
     !> dimension of one subblock
-    integer, private :: dim_subblock
+    integer, private :: dim_subblock = 0
     !> dimension of one quadblock
-    integer, private :: dim_quadblock
+    integer, private :: dim_quadblock = 0
+    !> dimension of the matrices
+    integer, private :: dim_matrix = 0
 
     contains
 
     procedure :: get_dim_subblock
     procedure :: get_dim_quadblock
+    procedure :: set_dim_matrix
+    procedure :: get_dim_matrix
   end type dims_t
 
   public :: new_block_dims
@@ -52,5 +56,25 @@ contains
 
     get_dim_quadblock = this%dim_quadblock
   end function get_dim_quadblock
+
+
+  !> Sets the matrix dimension depending on the number of points in the base grid.
+  pure subroutine set_dim_matrix(this, gridpts)
+    !> the settings object to set the matrix dimension for
+    class(dims_t), intent(inout) :: this
+    !> the number of points in the base grid
+    integer, intent(in) :: gridpts
+
+    this%dim_matrix = gridpts * this%dim_subblock
+  end subroutine set_dim_matrix
+
+
+  !> Returns the dimension of the matrices.
+  pure integer function get_dim_matrix(this)
+    !> the settings object to get the matrix dimension for
+    class(dims_t), intent(in) :: this
+
+    get_dim_matrix = this%dim_matrix
+  end function get_dim_matrix
 
 end module mod_settings_dims

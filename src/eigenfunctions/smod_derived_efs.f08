@@ -189,11 +189,13 @@ contains
       da2_ef = assemble_eigenfunction( &
         base_ef=retrieve_eigenfunctions(name="a2", state_vector=state_vector), &
         eigenvector=right_eigenvectors(:, eigenvalue_idx), &
+        dim_subblock=dims%get_dim_subblock(), &
         derivative_order=1 &
       )
       da3_ef = assemble_eigenfunction( &
         base_ef=retrieve_eigenfunctions(name="a3", state_vector=state_vector), &
         eigenvector=right_eigenvectors(:, eigenvalue_idx), &
+        dim_subblock=dims%get_dim_subblock(), &
         derivative_order=1 &
       )
 
@@ -202,13 +204,15 @@ contains
         loc=2, &
         ef_index=i, &
         rvec=right_eigenvectors(:, eigenvalue_idx), &
-        state_vector=state_vector &
+        state_vector=state_vector, &
+        dims=dims &
       )
       call set_velocity_curl( &
         loc=[3, 4, 5], &
         ef_index=i, &
         rvec=right_eigenvectors(:, eigenvalue_idx), &
-        state_vector=state_vector &
+        state_vector=state_vector, &
+        dims=dims &
       )
       call set_magnetic_field(loc=[6, 7, 8], ef_index=i)
       call set_magnetic_field_divergence(loc=9, ef_index=i)
@@ -216,7 +220,8 @@ contains
         loc=[10, 11, 12], &
         ef_index=i, &
         rvec=right_eigenvectors(:, eigenvalue_idx), &
-        state_vector=state_vector &
+        state_vector=state_vector, &
+        dims=dims &
       )
 
       if (can_calculate_pp_quantities) then
@@ -260,7 +265,7 @@ contains
 
 
   !> Calculates the divergence of the perturbed velocity v1
-  subroutine set_velocity_divergence(loc, ef_index, rvec, state_vector)
+  subroutine set_velocity_divergence(loc, ef_index, rvec, state_vector, dims)
     !> position index in the main array
     integer, intent(in) :: loc
     !> index of the eigenfunction in the "quantities" array attribute
@@ -269,12 +274,15 @@ contains
     complex(dp), intent(in) :: rvec(:)
     !> state vector
     character(len=*), intent(in) :: state_vector(:)
+    !> object with block dimensions
+    type(dims_t), intent(in) :: dims
     !> derivative of v1 eigenfunction
     complex(dp) :: dv1_ef(size(ef_grid))
 
     dv1_ef = assemble_eigenfunction( &
       base_ef=retrieve_eigenfunctions(name="v1", state_vector=state_vector), &
       eigenvector=rvec, &
+      dim_subblock=dims%get_dim_subblock(), &
       derivative_order=1 &
     )
     derived_eigenfunctions(loc)%quantities(:, ef_index) = ( &
@@ -284,7 +292,7 @@ contains
 
 
   !> Sets the three components of velocity curl.
-  subroutine set_velocity_curl(loc, ef_index, rvec, state_vector)
+  subroutine set_velocity_curl(loc, ef_index, rvec, state_vector, dims)
     !> position indices in the main array
     integer, intent(in) :: loc(3)
     !> index of the eigenfunction in the "quantities" array attribute
@@ -293,6 +301,8 @@ contains
     complex(dp), intent(in) :: rvec(:)
     !> state vector
     character(len=*), intent(in) :: state_vector(:)
+    !> object with block dimensions
+    type(dims_t), intent(in) :: dims
     !> derivative of v2 eigenfunction
     complex(dp) :: dv2_ef(size(ef_grid))
     !> derivative of v3 eigenfunction
@@ -301,11 +311,13 @@ contains
     dv2_ef = assemble_eigenfunction( &
       base_ef=retrieve_eigenfunctions(name="v2", state_vector=state_vector), &
       eigenvector=rvec, &
+      dim_subblock=dims%get_dim_subblock(), &
       derivative_order=1 &
     )
     dv3_ef = assemble_eigenfunction( &
       base_ef=retrieve_eigenfunctions(name="v3", state_vector=state_vector), &
       eigenvector=rvec, &
+      dim_subblock=dims%get_dim_subblock(), &
       derivative_order=1 &
     )
     derived_eigenfunctions(loc(1))%quantities(:, ef_index) = ( &
@@ -353,7 +365,7 @@ contains
 
 
   !> Calculates the curl of the perturbed magnetic field.
-  subroutine set_magnetic_field_curl(loc, ef_index, rvec, state_vector)
+  subroutine set_magnetic_field_curl(loc, ef_index, rvec, state_vector, dims)
     !> position indices in the main array
     integer, intent(in) :: loc(3)
     !> index of the eigenfunction in the "quantities" array attribute
@@ -362,6 +374,8 @@ contains
     complex(dp), intent(in) :: rvec(:)
     !> state vector
     character(len=*), intent(in) :: state_vector(:)
+    !> object with block dimensions
+    type(dims_t), intent(in) :: dims
     !> derivative of a1 eigenfunction
     complex(dp) :: da1_ef(size(ef_grid))
     !> second derivative of a2 eigenfunction
@@ -372,16 +386,19 @@ contains
     da1_ef = assemble_eigenfunction( &
       base_ef=retrieve_eigenfunctions(name="a1", state_vector=state_vector), &
       eigenvector=rvec, &
+      dim_subblock=dims%get_dim_subblock(), &
       derivative_order=1 &
     )
     dda2_ef = assemble_eigenfunction( &
       base_ef=retrieve_eigenfunctions(name="a2", state_vector=state_vector), &
       eigenvector=rvec, &
+      dim_subblock=dims%get_dim_subblock(), &
       derivative_order=2 &
     )
     dda3_ef = assemble_eigenfunction( &
       base_ef=retrieve_eigenfunctions(name="a3", state_vector=state_vector), &
       eigenvector=rvec, &
+      dim_subblock=dims%get_dim_subblock(), &
       derivative_order=2 &
     )
 

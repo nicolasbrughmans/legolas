@@ -33,7 +33,7 @@ contains
   !! eigenvector. Which eigenfunction to assemble is determined from the
   !! name attribute of the eigenfunction and the derivative order.
   module procedure assemble_eigenfunction
-    use mod_global_variables, only: dim_subblock, gridpts
+    use mod_global_variables, only: gridpts
 
     real(dp)  :: spline(4)
     integer   :: diff_order
@@ -50,14 +50,16 @@ contains
 
     ! contribution from first gridpoint
     spline = get_spline(base_ef%name, grid_idx=1, ef_grid_idx=1, diff_order=diff_order)
-    assembled_ef(1) = get_values_from_eigenvector(eigenvector, subblock_idx, spline)
+    assembled_ef(1) = get_values_from_eigenvector( &
+      eigenvector, subblock_idx, dim_subblock, spline &
+    )
 
     do grid_idx = 1, gridpts-1
       ! idx center interval = 2 * i, idx end interval = 2 * i + 1
       do ef_grid_idx = 2 * grid_idx, 2 * grid_idx + 1
         spline = get_spline(base_ef%name, grid_idx, ef_grid_idx, diff_order=diff_order)
         assembled_ef(ef_grid_idx) = get_values_from_eigenvector( &
-          eigenvector, subblock_idx, spline &
+          eigenvector, subblock_idx, dim_subblock, spline &
         )
       end do
       ! Increment indices of eigenvector elements
@@ -68,13 +70,15 @@ contains
 
   !> Retrieves the correct values from the eigenvector that correspond to the
   !! requested eigenfunction at the current subblock index mapping.
-  function get_values_from_eigenvector(eigenvector, subblock_idx, spline) result(val)
-    use mod_global_variables, only: dim_subblock
-
+  function get_values_from_eigenvector( &
+    eigenvector, subblock_idx, dim_subblock, spline &
+  ) result(val)
     !> the eigenvector associated with the requested eigenvalue
     complex(dp), intent(in) :: eigenvector(:)
     !> current subblock index mapping
     integer, intent(in) :: subblock_idx
+    !> dimension of the subblock
+    integer, intent(in) :: dim_subblock
     !> finite element basis functions corresponding to the current grid position
     real(dp), intent(in)  :: spline(:)
     !> the composed value extracted from the eigenvector

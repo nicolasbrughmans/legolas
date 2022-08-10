@@ -8,6 +8,7 @@ module mod_solvers
   use mod_check_values, only: set_small_values_to_zero
   use mod_matrix_structure, only: matrix_t
   use mod_transform_matrix, only: matrix_to_array
+  use mod_settings, only: settings_t
   implicit none
 
   private
@@ -36,7 +37,7 @@ module mod_solvers
       complex(dp), intent(out)  :: vr(:, :)
     end subroutine qz_direct
 
-    module subroutine arnoldi(matrix_A, matrix_B, omega, vr)
+    module subroutine arnoldi(matrix_A, matrix_B, omega, vr, settings)
       !> matrix A
       type(matrix_t), intent(in) :: matrix_A
       !> matrix B
@@ -45,6 +46,8 @@ module mod_solvers
       complex(dp), intent(out)  :: omega(:)
       !> array with right eigenvectors
       complex(dp), intent(out)  :: vr(:, :)
+      !> settings object
+      type(settings_t), intent(in) :: settings
     end subroutine arnoldi
   end interface
 
@@ -56,7 +59,7 @@ contains
   !> Main subroutine to solve the eigenvalue problem. Depending on the solvelist
   !! passed in the parfile, different solvers are called.
   !! @warning Throws an error if an unknown solver is passed. @endwarning
-  subroutine solve_evp(matrix_A, matrix_B, omega, vr)
+  subroutine solve_evp(matrix_A, matrix_B, omega, vr, settings)
     use mod_global_variables, only: solver
 
     !> A-matrix
@@ -67,6 +70,8 @@ contains
     complex(dp), intent(out)  :: omega(:)
     !> right eigenvectors
     complex(dp), intent(out)  :: vr(:, :)
+    !> settings object
+    type(settings_t), intent(in) :: settings
 
     select case(solver)
     case("QR-invert")
@@ -74,7 +79,7 @@ contains
     case("QZ-direct")
       call qz_direct(matrix_A, matrix_B, omega, vr)
     case("arnoldi")
-      call arnoldi(matrix_A, matrix_B, omega, vr)
+      call arnoldi(matrix_A, matrix_B, omega, vr, settings)
     case default
       call log_message("unknown solver passed: " // solver, level="error")
       return

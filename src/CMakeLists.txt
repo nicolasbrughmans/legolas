@@ -8,6 +8,7 @@ set (sources
         mod_physical_constants.f08
         state/mod_settings_dims.f08
         state/mod_settings.f08
+        dataIO/mod_console.f08
         utils/mod_get_indices.f08
         matrices/datastructure/mod_matrix_node.f08
         matrices/datastructure/mod_matrix_row.f08

@@ -1,5 +1,5 @@
 module mod_boundary_manager
-  use mod_global_variables, only: dp, dim_quadblock
+  use mod_global_variables, only: dp
   use mod_logging, only: log_message, str
   use mod_matrix_structure, only: matrix_t
   use mod_settings, only: settings_t
@@ -25,12 +25,14 @@ module mod_boundary_manager
       type(settings_t), intent(in) :: settings
     end subroutine apply_essential_boundaries_right
 
-    module subroutine apply_natural_boundaries_left(matrix)
+    module subroutine apply_natural_boundaries_left(matrix, settings)
       type(matrix_t), intent(inout) :: matrix
+      type(settings_t), intent(in) :: settings
     end subroutine apply_natural_boundaries_left
 
-    module subroutine apply_natural_boundaries_right(matrix)
+    module subroutine apply_natural_boundaries_right(matrix, settings)
       type(matrix_t), intent(inout) :: matrix
+      type(settings_t), intent(in) :: settings
     end subroutine apply_natural_boundaries_right
   end interface
 
@@ -49,16 +51,16 @@ contains
     call set_boundary_flags()
 
     ! handle left side boundary conditions B-matrix
-    call apply_natural_boundaries_left(matrix_B)
+    call apply_natural_boundaries_left(matrix_B, settings)
     call apply_essential_boundaries_left(matrix_B, settings)
     ! handle left side boundary conditions A-matrix
-    call apply_natural_boundaries_left(matrix_A)
+    call apply_natural_boundaries_left(matrix_A, settings)
     call apply_essential_boundaries_left(matrix_A, settings)
     ! handle right side boundary conditions B-matrix
-    call apply_natural_boundaries_right(matrix_B)
+    call apply_natural_boundaries_right(matrix_B, settings)
     call apply_essential_boundaries_right(matrix_B, settings)
     ! handle right side boundary conditions A-matrix
-    call apply_natural_boundaries_right(matrix_A)
+    call apply_natural_boundaries_right(matrix_A, settings)
     call apply_essential_boundaries_right(matrix_A, settings)
   end subroutine apply_boundary_conditions
 

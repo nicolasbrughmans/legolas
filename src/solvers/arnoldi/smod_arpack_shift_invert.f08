@@ -35,7 +35,7 @@ contains
     complex(dp) :: bxvector(arpack_cfg%get_evpdim())
 
     call log_message("creating banded A - sigma*B", level="debug")
-    diags = dim_quadblock - 1
+    diags = dims%get_dim_quadblock() - 1
     !> @note we don't do `matrix_to_banded(matrix_A - matrix_B * sigma)` as it appears
     !! that in rare cases this gives rise to numerical difficulties. Depending on the
     !! equilibrium, for some rather small `sigma` the differences between direct

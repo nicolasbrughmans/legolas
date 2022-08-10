@@ -15,7 +15,7 @@ contains
     integer :: limits(2)
 
     ! left side quadblock limits are (1, 1) -> (dim_quadblock, dim_quadblock)
-    limits = [1, dim_quadblock]
+    limits = [1, settings%dims%get_dim_quadblock()]
 
     ! on the left side we have a zero in a quadratic basis function (number 2), which
     ! zeroes out the odd rows/columns. We explicitly handle this by introducing an
@@ -97,7 +97,7 @@ contains
     integer :: limits(2)
 
     ! index shift, even number so end of previous quadblock
-    ishift = matrix%matrix_dim - dim_quadblock
+    ishift = matrix%matrix_dim - settings%dims%get_dim_quadblock()
     ! last quadblock indices hence run from ishift + 1 to matrix dimension
     limits = [ishift + 1, matrix%matrix_dim]
 

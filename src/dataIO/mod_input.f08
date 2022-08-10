@@ -122,10 +122,13 @@ contains
     if (physics_type == "") physics_type = "mhd"
     call settings%set_physics_type(physics_type)
 
-    ! Set gridpoints and gamma, if supplied
+    ! Set gridpoints, if supplied
     if (.not. gridpoints == 0) then
       call set_gridpts(gridpoints)
     end if
+    ! set matrix dimensions based on gridpoints
+    call settings%dims%set_dim_matrix(gridpoints)
+    ! set gamme, if supplied
     if (.not. is_equal(mhd_gamma, 0.0d0)) then
       call set_gamma(mhd_gamma)
     end if

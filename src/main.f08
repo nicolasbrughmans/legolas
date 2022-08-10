@@ -12,7 +12,8 @@ program legolas
   use mod_matrix_manager, only: build_matrices
   use mod_solvers, only: solve_evp
   use mod_output, only: datfile_name, create_datfile
-  use mod_logging, only: log_message, str, print_console_info, print_whitespace
+  use mod_logging, only: log_message, str
+  use mod_console, only: print_console_info, print_whitespace
   use mod_inspections, only: handle_spurious_eigenvalues
   use mod_settings, only: settings_t
   implicit none
@@ -30,13 +31,13 @@ program legolas
   complex(dp), allocatable  :: eigenvecs_right(:, :)
 
   call initialisation()
-  call print_console_info()
+  call print_console_info(settings)
 
   call build_matrices(matrix_B, matrix_A, settings)
 
   if (.not. dry_run) then
     call log_message("solving eigenvalue problem...", level="info")
-    call solve_evp(matrix_A, matrix_B, omega, eigenvecs_right)
+    call solve_evp(matrix_A, matrix_B, omega, eigenvecs_right, settings)
   else
     call log_message( &
       "running dry, overriding parfile and setting eigenvalues to zero", level="info"  &
@@ -62,12 +63,12 @@ contains
   !! Allocates and initialises main and global variables, then the equilibrium state
   !! and eigenfunctions are initialised and the equilibrium is set.
   subroutine initialisation()
-    use mod_global_variables, only: initialise_globals, dim_matrix, &
+    use mod_global_variables, only: initialise_globals, &
       solver, number_of_eigenvalues, write_eigenfunctions, gamma, set_gamma, NaN
     use mod_matrix_structure, only: new_matrix
     use mod_input, only: read_parfile, get_parfile
     use mod_equilibrium, only: initialise_equilibrium, set_equilibrium, hall_field
-    use mod_logging, only: print_logo
+    use mod_console, only: print_logo
     use mod_global_variables, only: hall_mhd, hall_substitution, elec_inertia, x_end, x_start
     use mod_settings, only: new_settings
 
@@ -93,12 +94,12 @@ contains
     if (solver == "arnoldi") then
       nb_evs = number_of_eigenvalues
     else
-      nb_evs = dim_matrix
+      nb_evs = settings%dims%get_dim_matrix()
     end if
     call log_message("setting #eigenvalues to " // str(nb_evs), level="debug")
     allocate(omega(nb_evs))
-    matrix_A = new_matrix(nb_rows=dim_matrix, label="A")
-    matrix_B = new_matrix(nb_rows=dim_matrix, label="B")
+    matrix_A = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="A")
+    matrix_B = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="B")
 
     call initialise_equilibrium()
     call set_equilibrium()
@@ -124,7 +125,7 @@ contains
     if (write_eigenfunctions .or. solver == "arnoldi") then
       call log_message("allocating eigenvector arrays", level="debug")
       ! we need #rows = matrix dimension, #cols = #eigenvalues
-      allocate(eigenvecs_right(dim_matrix, nb_evs))
+      allocate(eigenvecs_right(settings%dims%get_dim_matrix(), nb_evs))
     else
       ! @note: this is needed to prevent segfaults, since it seems that in some
       ! cases for macOS the routine zgeev references the right eigenvectors even
@@ -142,7 +143,9 @@ contains
 
     if (write_eigenfunctions) then
       call initialise_eigenfunctions(omega, settings%get_state_vector())
-      call calculate_eigenfunctions(eigenvecs_right, settings%get_state_vector())
+      call calculate_eigenfunctions( &
+        eigenvecs_right, settings%get_state_vector(), settings%dims &
+      )
     end if
   end subroutine create_eigenfunctions
 
