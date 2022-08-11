@@ -37,8 +37,8 @@ $$
 	\end{aligned} \\
 	\begin{aligned}
 		\frac{\partial \bbf}{\partial t} = ~&\nabla \times (\vbf \times \bbf) - \nabla \times (\eta\nabla \times \bbf) \\
-				&-\nabla\times \left[ \frac{\eta_H}{\rho_e}(\nabla \times \bbf) \times \bbf - \frac{\eta_H}{\rho_e}\nabla p
-                                        + \frac{\eta_e}{\rho_e}\frac{\partial (\nabla \times \bbf)}{\partial t} \right].
+				&-\nabla\times \left[ \frac{\eta_H}{\rho}(\nabla \times \bbf) \times \bbf - \frac{\eta_H}{\rho}\nabla p
+                                        + \frac{\eta_e}{\rho}\frac{\partial (\nabla \times \bbf)}{\partial t} \right].
 	\end{aligned}
 \end{gather}
 $$
