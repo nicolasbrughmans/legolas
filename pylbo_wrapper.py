@@ -1,6 +1,5 @@
 import os
 import sys
-
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -44,9 +43,9 @@ def _main():
     pylbo.plot_equilibrium(ds)
     p = pylbo.plot_spectrum(ds)
     p.add_continua()
-    if ds.efs_written:
+    if ds.has_efs:
         p.add_eigenfunctions()
-    if ds.derived_efs_written:
+    if ds.has_derived_efs:
         p2 = pylbo.plot_spectrum(ds)
         p2.add_continua()
         p2.add_derived_eigenfunctions()

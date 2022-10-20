@@ -1,12 +1,14 @@
 import os
-import numpy as np
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog
+
+import numpy as np
+
+from pylbo.data_containers import LegolasDataSeries, LegolasDataSet
 from pylbo.exceptions import InvalidLegolasFile
-from pylbo.data_containers import LegolasDataSet, LegolasDataSeries
-from pylbo.utilities.toolbox import transform_to_list
 from pylbo.utilities.logger import pylboLogger
+from pylbo.utilities.toolbox import transform_to_list
 
 
 def _validate_file(file):
@@ -61,13 +63,15 @@ def load(datfile):
     pylboLogger.info(f"gridpoints       : {ds.gridpoints}")
     pylboLogger.info(f"geometry         : {ds.geometry} in {ds.x_start, ds.x_end}")
     pylboLogger.info(f"equilibrium      : {ds.eq_type}")
-    if ds.header["matrices_written"]:
+    if ds.has_matrices:
         pylboLogger.info("matrices present in datfile")
-    if ds.header["eigenfuncs_written"]:
+    if ds.has_eigenvectors:
+        pylboLogger.info("eigenvectors present in datfile")
+    if ds.has_efs:
         pylboLogger.info("eigenfunctions present in datfile")
-    if ds.header.get("derived_eigenfuncs_written", False):
+    if ds.has_derived_efs:
         pylboLogger.info("derived eigenfunctions present in datfile")
-    if ds.header.get("eigenfunction_subset_used", False):
+    if ds.has_ef_subset:
         saved_efs = len(ds.header["ef_written_idxs"])
         total_efs = len(ds.eigenvalues)
         pylboLogger.info(
@@ -141,7 +145,7 @@ def load_series(datfiles):
         pylboLogger.info(f"equilibria       : {equils.pop()}")
 
     # check presence of matrices
-    matrices_present = set([ds.header["matrices_written"] for ds in series.datasets])
+    matrices_present = set(series.has_matrices)
     if len(matrices_present) > 1:
         pylboLogger.info("matrices present in some datfiles, but not all")
     else:
@@ -149,7 +153,7 @@ def load_series(datfiles):
             pylboLogger.info("matrices present in all datfiles")
 
     # check presence of eigenfunctions
-    efs_present = set([ds.header["eigenfuncs_written"] for ds in series.datasets])
+    efs_present = set(series.has_efs)
     if len(efs_present) > 1:
         pylboLogger.info("eigenfunctions present in some datfiles, but not all")
     else:
@@ -157,9 +161,7 @@ def load_series(datfiles):
             pylboLogger.info("eigenfunctions present in all datfiles")
 
     # check presence of derived eigenfunctions
-    defs_present = set(
-        [ds.header.get("derived_eigenfuncs_written", False) for ds in series.datasets]
-    )
+    defs_present = set(series.has_derived_efs)
     if len(defs_present) == 0:
         pylboLogger.info("no derived eigenfunctions present")
     elif len(defs_present) > 1:
