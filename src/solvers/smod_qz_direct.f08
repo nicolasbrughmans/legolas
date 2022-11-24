@@ -64,7 +64,7 @@ contains
     allocate(rwork(8 * N))
     ! get lwork
     allocate(work(1))
-    call zggev3( &
+    call zggev( &
       jobvl, jobvr, N, array_A, lda, array_B, ldb, &
       alpha, beta, vl, ldvl, vr, ldvr, work, -1, rwork, info &
     )
@@ -75,7 +75,7 @@ contains
 
     ! solve eigenvalue problem
     call log_message("solving evp using QZ algorithm zggev (LAPACK)", level="debug")
-    call zggev3( &
+    call zggev( &
       jobvl, jobvr, N, array_A, lda, array_B, ldb, &
       alpha, beta, vl, ldvl, vr, ldvr, work, lwork, rwork, info &
     )
