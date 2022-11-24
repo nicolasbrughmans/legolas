@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.collections import PathCollection
 from pylbo.data_containers import LegolasDataSet, LegolasDataSeries
-from pylbo.utilities.toolbox import add_pickradius_to_item
+from pylbo.utilities.toolbox import add_pickradius_to_item, count_zeroes, calculate_wcom
 from pylbo.utilities.logger import pylboLogger
 
 
 class EigenfunctionInterface:
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, data, axis, spec_axis):
+    def __init__(self, data, axis, spec_axis, draw_resonance):
         self.data = data
         self.axis = axis
         self.spec_axis = spec_axis
@@ -30,6 +30,8 @@ class EigenfunctionInterface:
 
         self._ef_subset_artists = None
         self._display_tooltip()
+
+        self._draw_resonances = draw_resonance
 
     def _check_data_is_present(self):
         """
@@ -114,6 +116,28 @@ class EigenfunctionInterface:
         for ds, points in self._selected_idxs.items():
             idxs = np.array([int(idx) for idx in points.keys()])
             print(f"{ds.datfile.stem} | {ds.eigenvalues[idxs]}")
+
+    def _print_nzeroes(self):
+        """
+        Counts and prints the number of zeroes of the eigenfunctions for all selected 
+        eigenvalues on the plot, together with eigvals.
+        """
+        if not self._selected_idxs:
+            return
+        print("Currently selected eigenvalues and number of zeroes of their eigenfunctions:")
+        ef_name = self._function_names[self._selected_name_idx]
+        for ds, points in self._selected_idxs.items():
+            idxs = np.array([int(idx) for idx in points.keys()])
+
+            ef_container = ds.get_eigenfunctions(ev_idxs=idxs)
+            eigfuncs = np.zeros((len(idxs),len(ds.ef_grid)), dtype='complex')
+            current_index = 0
+            for ev_idx, efs in zip(idxs, ef_container):
+                eigfuncs[current_index] = efs.get(ef_name)
+                current_index += 1
+
+            nzeroes = count_zeroes(eigfuncs)
+            print(f"{ds.datfile.stem} | {dict(zip(ds.eigenvalues[idxs], nzeroes))}")
 
     def _get_label(self, ds, ev_idx, w):
         """
@@ -203,7 +227,9 @@ class EigenfunctionInterface:
             self._retransform_functions()
         elif event.key == "w":
             self._print_selected_eigenvalues()
-        if event.key in ("enter", "up", "down", "i", "t"):
+        elif event.key == "n":
+            self._print_nzeroes()
+        if event.key in ("enter", "up", "down", "i", "t", "n"):
             self.update_plot()
         event.canvas.draw()
 
@@ -238,6 +264,9 @@ class EigenfunctionInterface:
         items = self._selected_idxs.get(associated_ds, {})
         items.update({f"{idx}": marked_point})
         self._selected_idxs.update({associated_ds: items})
+        if self.data.derived_efs_written:
+            wcom = calculate_wcom(associated_ds, idx)
+            print("Imaginary part of wcom: ", np.imag(wcom))
 
     def on_right_click(self, event):
         """
