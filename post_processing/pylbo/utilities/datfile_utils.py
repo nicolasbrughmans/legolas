@@ -505,7 +505,7 @@ def read_equilibrium_arrays(istream, header):
     return equil_arrays
 
 
-def read_eigenfunction(istream, header, ev_index):
+def read_eigenfunction(istream, header, ev_index, mute=False):
     """
     Reads a single eigenfunction from the datfile.
     Eigenfunctions are read in on-the-fly, to prevent having to load the
@@ -538,7 +538,8 @@ def read_eigenfunction(istream, header, ev_index):
     try:
         ((ef_index,),) = np.where(header["ef_written_idxs"] == ev_index)
     except ValueError:
-        pylboLogger.warning("selected eigenvalue has no eigenfunctions!")
+        if not mute:
+            pylboLogger.warning("selected eigenvalue has no eigenfunctions!")
         return None
 
     # Fortran writes in column-major order, meaning column per column.
@@ -562,7 +563,7 @@ def read_eigenfunction(istream, header, ev_index):
     return eigenfunctions
 
 
-def read_derived_eigenfunction(istream, header, ev_index):
+def read_derived_eigenfunction(istream, header, ev_index, mute=False):
     """
     Reads a single derived eigenfunction from the datfile.
     Quantities are read in on-the-fly, to prevent having to load the
@@ -594,7 +595,8 @@ def read_derived_eigenfunction(istream, header, ev_index):
     try:
         ((ef_index,),) = np.where(header["ef_written_idxs"] == ev_index)
     except ValueError:
-        pylboLogger.warning("selected eigenvalue has no eigenfunctions!")
+        if not mute:
+            pylboLogger.warning("selected eigenvalue has no eigenfunctions!")
         return None
 
     matrix_bytesize = ef_gridpts * nb_eigenfuncs * SIZE_COMPLEX

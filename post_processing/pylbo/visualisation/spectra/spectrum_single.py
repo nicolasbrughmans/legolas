@@ -1,5 +1,6 @@
 import numpy as np
-from pylbo.utilities.toolbox import add_pickradius_to_item
+import matplotlib as mpl
+from pylbo.utilities.toolbox import add_pickradius_to_item, calculate_wcom
 from pylbo.visualisation.continua import ContinuaHandler
 from pylbo.visualisation.eigenfunctions.derived_eigfunc_handler import (
     DerivedEigenfunctionHandler,
@@ -37,9 +38,9 @@ class SingleSpectrumPlot(SpectrumFigure):
         Alpha value of the points.
     """
 
-    def __init__(self, dataset, figsize, custom_figure, **kwargs):
+    def __init__(self, dataset, figsize, custom_figure, show_wcom=False, **kwargs):
         super().__init__(
-            custom_figure=custom_figure, figlabel="single-spectrum", figsize=figsize
+            custom_figure=custom_figure, figlabel="single-spectrum", figsize=figsize, show_wcom=show_wcom
         )
         self.dataset = dataset
         super()._set_plot_properties(kwargs)
@@ -60,6 +61,58 @@ class SingleSpectrumPlot(SpectrumFigure):
             **self.plot_props,
         )
         # set dataset associated with this line of points
+        setattr(spectrum_point, "dataset", self.dataset)
+        add_pickradius_to_item(item=spectrum_point, pickradius=10)
+        self.ax.axhline(y=0, linestyle="dotted", color="grey", alpha=0.3)
+        self.ax.axvline(x=0, linestyle="dotted", color="grey", alpha=0.3)
+        self.ax.set_xlabel(r"Re($\omega$)")
+        self.ax.set_ylabel(r"Im($\omega$)")
+        self.ax.set_title(self.dataset.eq_type)
+
+    def add_spectrum_wcom(self):
+        """Adds a clickable spectrum to the plot and colours it by values of abs of imaginary part of Wcom. 
+        If no eigfunc present, colors it in standard color."""
+        wcom, omega = np.zeros_like(self.w_real), np.zeros_like(self.w_real, dtype="complex")
+        for idx in range(0,len(self.w_real)):
+            wcom_temp, omega_temp = calculate_wcom(self.dataset, idx, return_ev=True)
+            if idx==994: print(wcom_temp,omega_temp)
+            if wcom_temp != 0:
+                wcom[idx] = np.imag(wcom_temp)
+                omega[idx] = omega_temp
+            print(idx)
+
+        print(wcom)
+
+        print("Max value of wcom is %.5e." %np.max(np.abs(wcom)))
+        print("Min value of wcom is %.5e." %np.min(np.abs(wcom)))
+
+        omega_remaining = np.setdiff1d(self.dataset.eigenvalues, omega)
+
+        spectrum_points_wcom = self.ax.scatter(
+            np.real(omega) * self.x_scaling,
+            np.imag(omega) * self.y_scaling,
+            marker=self.marker,
+            c=wcom,
+            cmap=mpl.pyplot.cm.RdYlGn, 
+            norm=mpl.colors.LogNorm(np.max([1e-13,np.min(np.abs(wcom))]),np.max(np.abs(wcom))),
+            s=self.markersize**2,
+            alpha=self.alpha,
+            linestyle="None",
+            **self.plot_props,
+        )
+        (spectrum_point,) = self.ax.plot(
+            np.real(omega_remaining) * self.x_scaling,
+            np.imag(omega_remaining) * self.y_scaling,
+            marker=self.marker,
+            color=self.color,
+            markersize=self.markersize,
+            alpha=self.alpha,
+            linestyle="None",
+            **self.plot_props,
+        )
+        # set dataset associated with this line of points
+        setattr(spectrum_points_wcom, "dataset", self.dataset)
+        add_pickradius_to_item(item=spectrum_points_wcom, pickradius=10)
         setattr(spectrum_point, "dataset", self.dataset)
         add_pickradius_to_item(item=spectrum_point, pickradius=10)
         self.ax.axhline(y=0, linestyle="dotted", color="grey", alpha=0.3)

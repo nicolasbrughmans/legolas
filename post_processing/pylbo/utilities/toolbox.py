@@ -279,15 +279,25 @@ def invert_continuum_array(cont, r_gauss, sigma):
                 return r_gauss[i]
 
 
-def calculate_wcom(ds, index):
+def calculate_wcom(ds, index, return_ev=False):
     """
     Add necessary information!!
+    Returns 0 if no eigenfunctions are present for given index.
     """
 
-    eigfuncs = ds.get_eigenfunctions(ev_idxs=[index])
-    derived_eigfuncs = ds.get_derived_eigenfunctions(ev_idxs=[index])
+    if ds.efs_written:
+        eigfuncs = ds.get_eigenfunctions(ev_idxs=[index], mute=True)
+        omega_ef = eigfuncs[0].get("eigenvalue")
+    else:
+        omega_ef = 0.0
 
-    omega_ef = eigfuncs[0].get("eigenvalue")
+    if not ds.derived_efs_written or np.abs(omega_ef) < 1e-12:
+        if return_ev:
+            return 0, omega_ef
+        else:
+            return 0
+
+    derived_eigfuncs = ds.get_derived_eigenfunctions(ev_idxs=[index], mute=True)
 
     vr_ef = eigfuncs[0].get("v1")
     T_ef = eigfuncs[0].get("T")
@@ -431,4 +441,13 @@ def calculate_wcom(ds, index):
 
     w_com = np.trapz(interval, integrand)
 
-    return w_com
+    if np.abs(w_com) < 1e3:
+        if return_ev:
+            return (w_com, omega_ef)
+        else:
+            return w_com
+    else:
+        if return_ev:
+            return (0, omega_ef)
+        else:
+            return 0

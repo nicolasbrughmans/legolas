@@ -39,6 +39,7 @@ class SpectrumFigure(InteractiveFigureWindow):
         custom_figure: tuple[mpl_fig, mpl_axes] = None,
         figlabel: str = None,
         figsize: tuple[int, int] = None,
+        show_wcom=False
     ):
         fig, ax = (
             custom_figure
@@ -61,13 +62,17 @@ class SpectrumFigure(InteractiveFigureWindow):
         self.color = None
         self.markersize = None
         self.alpha = None
+        self.show_wcom = show_wcom
 
     def draw(self):
         """
         Called on plot refreshing, the super call clears the figure and then redraws
         everything.
         """
-        self.add_spectrum()
+        if self.show_wcom:
+            self.add_spectrum_wcom()
+        else:
+            self.add_spectrum()
         super().draw()
 
     @refresh_plot

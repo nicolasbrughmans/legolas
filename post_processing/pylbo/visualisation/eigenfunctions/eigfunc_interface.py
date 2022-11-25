@@ -264,9 +264,9 @@ class EigenfunctionInterface:
         items = self._selected_idxs.get(associated_ds, {})
         items.update({f"{idx}": marked_point})
         self._selected_idxs.update({associated_ds: items})
-        if self.data.derived_efs_written:
-            wcom = calculate_wcom(associated_ds, idx)
-            print("Imaginary part of wcom: ", np.imag(wcom))
+        # if self.data.derived_efs_written:
+        #     wcom = calculate_wcom(associated_ds, idx)
+        #     print("Imaginary part of wcom: ", np.imag(wcom))
 
     def on_right_click(self, event):
         """

@@ -616,7 +616,7 @@ class LegolasDataSet(LegolasDataContainer):
             res = read_residuals(istream, self.header)
         return res
 
-    def get_eigenfunctions(self, ev_guesses=None, ev_idxs=None):
+    def get_eigenfunctions(self, ev_guesses=None, ev_idxs=None, mute=False):
         """
         Returns the eigenfunctions based on given eigenvalue guesses or their
         indices. An array will be returned where every item is a dictionary, containing
@@ -654,13 +654,13 @@ class LegolasDataSet(LegolasDataContainer):
         eigenfuncs = np.array([{}] * len(idxs), dtype=dict)
         with open(self.datfile, "rb") as istream:
             for dict_idx, ef_idx in enumerate(idxs):
-                efs = read_eigenfunction(istream, self.header, ef_idx)
+                efs = read_eigenfunction(istream, self.header, ef_idx, mute=mute)
                 if efs is not None:
                     efs.update({"eigenvalue": self.eigenvalues[ef_idx]})
                 eigenfuncs[dict_idx] = efs
         return eigenfuncs
 
-    def get_derived_eigenfunctions(self, ev_guesses=None, ev_idxs=None):
+    def get_derived_eigenfunctions(self, ev_guesses=None, ev_idxs=None, mute=False):
         """
         Returns the derived eigenfunctions based on given eigenvalue guesses or their
         indices. An array will be returned where every item is a dictionary, containing
@@ -699,7 +699,7 @@ class LegolasDataSet(LegolasDataContainer):
         derived_efs = np.array([{}] * len(idxs), dtype=dict)
         with open(self.datfile, "rb") as istream:
             for dict_idx, ef_idx in enumerate(idxs):
-                defs = read_derived_eigenfunction(istream, self.header, ef_idx)
+                defs = read_derived_eigenfunction(istream, self.header, ef_idx, mute=mute)
                 if defs is not None:
                     defs.update({"eigenvalue": self.eigenvalues[ef_idx]})
                 derived_efs[dict_idx] = defs
