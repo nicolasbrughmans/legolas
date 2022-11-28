@@ -75,16 +75,13 @@ class SingleSpectrumPlot(SpectrumFigure):
         wcom, omega = np.zeros_like(self.w_real), np.zeros_like(self.w_real, dtype="complex")
         for idx in range(0,len(self.w_real)):
             wcom_temp, omega_temp = calculate_wcom(self.dataset, idx, return_ev=True)
-            if idx==994: print(wcom_temp,omega_temp)
-            if wcom_temp != 0:
-                wcom[idx] = np.imag(wcom_temp)
+            if wcom_temp is not None:
+                wcom[idx] = np.abs(np.imag(wcom_temp))
                 omega[idx] = omega_temp
-            print(idx)
-
-        print(wcom)
+            print(idx, omega_temp)
 
         print("Max value of wcom is %.5e." %np.max(np.abs(wcom)))
-        print("Min value of wcom is %.5e." %np.min(np.abs(wcom)))
+        print("Min value of wcom is %.5e." %np.min(np.abs(wcom > 0.0)))
 
         omega_remaining = np.setdiff1d(self.dataset.eigenvalues, omega)
 
@@ -94,7 +91,7 @@ class SingleSpectrumPlot(SpectrumFigure):
             marker=self.marker,
             c=wcom,
             cmap=mpl.pyplot.cm.RdYlGn, 
-            norm=mpl.colors.LogNorm(np.max([1e-13,np.min(np.abs(wcom))]),np.max(np.abs(wcom))),
+            norm=mpl.colors.LogNorm(np.max([1e-13,np.min(np.abs(wcom))]),np.max([1e-12, np.max(np.abs(wcom))])),
             s=self.markersize**2,
             alpha=self.alpha,
             linestyle="None",
@@ -115,6 +112,7 @@ class SingleSpectrumPlot(SpectrumFigure):
         add_pickradius_to_item(item=spectrum_points_wcom, pickradius=10)
         setattr(spectrum_point, "dataset", self.dataset)
         add_pickradius_to_item(item=spectrum_point, pickradius=10)
+        self.cbar = self.fig.colorbar(spectrum_points_wcom, ax=self.ax, label="Wcom")
         self.ax.axhline(y=0, linestyle="dotted", color="grey", alpha=0.3)
         self.ax.axvline(x=0, linestyle="dotted", color="grey", alpha=0.3)
         self.ax.set_xlabel(r"Re($\omega$)")

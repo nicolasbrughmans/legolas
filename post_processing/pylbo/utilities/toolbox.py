@@ -285,17 +285,17 @@ def calculate_wcom(ds, index, return_ev=False):
     Returns 0 if no eigenfunctions are present for given index.
     """
 
-    if ds.efs_written:
-        eigfuncs = ds.get_eigenfunctions(ev_idxs=[index], mute=True)
+    eigfuncs = ds.get_eigenfunctions(ev_idxs=[index], mute=True)
+    if eigfuncs[0] is not None:
         omega_ef = eigfuncs[0].get("eigenvalue")
     else:
         omega_ef = 0.0
 
-    if not ds.derived_efs_written or np.abs(omega_ef) < 1e-12:
+    if not ds.derived_efs_written or np.abs(omega_ef) < 1e-15:
         if return_ev:
-            return 0, omega_ef
+            return None, omega_ef
         else:
-            return 0
+            return None
 
     derived_eigfuncs = ds.get_derived_eigenfunctions(ev_idxs=[index], mute=True)
 
@@ -344,7 +344,7 @@ def calculate_wcom(ds, index, return_ev=False):
     k_perp = G/B0
     hsq = m**2/r**2 + k**2
 
-    if gamma > 1e6: incompressible = True
+    incompressible = (gamma > 1e6)
 
     # compressible version of the factors:
     if not incompressible:
@@ -436,10 +436,8 @@ def calculate_wcom(ds, index, return_ev=False):
 
     ### Calculating the volume integral
     integrand = term1 + term2 + term3 + term4
-    delta = ds.parameters["delta"]
-    interval = np.linspace(1.0, 1.0+delta, len(integrand))
 
-    w_com = np.trapz(interval, integrand)
+    w_com = np.trapz(r, integrand)
 
     if np.abs(w_com) < 1e3:
         if return_ev:
@@ -448,6 +446,6 @@ def calculate_wcom(ds, index, return_ev=False):
             return w_com
     else:
         if return_ev:
-            return (0, omega_ef)
+            return (None, omega_ef)
         else:
-            return 0
+            return None

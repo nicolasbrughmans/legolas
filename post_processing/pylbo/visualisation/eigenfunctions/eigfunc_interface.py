@@ -117,6 +117,21 @@ class EigenfunctionInterface:
             idxs = np.array([int(idx) for idx in points.keys()])
             print(f"{ds.datfile.stem} | {ds.eigenvalues[idxs]}")
 
+    def _print_wcom(self):
+        """
+        Prints all selected eigenvalues and their complementary energy to the console.
+        """
+        if not self._selected_idxs:
+            return
+        print("Currently selected eigenvalues:")
+        for ds, points in self._selected_idxs.items():
+            idxs = np.array([int(idx) for idx in points.keys()])
+            wcom = np.zeros(len(idxs))
+            for i,idx in enumerate(idxs):
+                wcom_temp = calculate_wcom(ds,idx)
+                wcom[i] = wcom_temp
+            print(f"{ds.datfile.stem} | {ds.eigenvalues[idxs]} | {wcom}")
+
     def _print_nzeroes(self):
         """
         Counts and prints the number of zeroes of the eigenfunctions for all selected 
@@ -229,6 +244,8 @@ class EigenfunctionInterface:
             self._print_selected_eigenvalues()
         elif event.key == "n":
             self._print_nzeroes()
+        elif event.key == "ctrl+c":
+            self._print_wcom()
         if event.key in ("enter", "up", "down", "i", "t", "n"):
             self.update_plot()
         event.canvas.draw()
