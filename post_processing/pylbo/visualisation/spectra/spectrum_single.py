@@ -90,7 +90,7 @@ class SingleSpectrumPlot(SpectrumFigure):
             np.imag(omega) * self.y_scaling,
             marker=self.marker,
             c=wcom,
-            cmap=mpl.pyplot.cm.RdYlGn, 
+            cmap=mpl.pyplot.cm.RdYlGn_r, 
             norm=mpl.colors.LogNorm(np.max([1e-13,np.min(np.abs(wcom))]),np.max([1e-12, np.max(np.abs(wcom))])),
             s=self.markersize**2,
             alpha=self.alpha,

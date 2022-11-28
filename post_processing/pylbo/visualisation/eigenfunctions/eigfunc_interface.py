@@ -129,7 +129,7 @@ class EigenfunctionInterface:
             wcom = np.zeros(len(idxs))
             for i,idx in enumerate(idxs):
                 wcom_temp = calculate_wcom(ds,idx)
-                wcom[i] = wcom_temp
+                wcom[i] = np.imag(wcom_temp)
             print(f"{ds.datfile.stem} | {ds.eigenvalues[idxs]} | {wcom}")
 
     def _print_nzeroes(self):
