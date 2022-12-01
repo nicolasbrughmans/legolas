@@ -51,7 +51,7 @@ class DerivedEigenfunctionHandler(EigenfunctionInterface):
                     cont_keys = r_inv.keys()
                     for cont_key in cont_keys:
                         if r_inv[cont_key] != None:
-                            self.axis.axvline(x=r_inv[cont_key], linestyle=RESONANCE_STYLES[cont_key], color=color, alpha=40)
+                            self.axis.axvline(x=r_inv[cont_key], linestyle=RESONANCE_STYLES[cont_key], color=color, alpha=0.4)
         self.axis.axhline(y=0, linestyle="dotted", color="grey")
         if isinstance(self.data, LegolasDataSet):
             self.axis.axvline(x=self.data.x_start, linestyle="dotted", color="grey")
