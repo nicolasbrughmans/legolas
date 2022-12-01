@@ -78,7 +78,7 @@ class SingleSpectrumPlot(SpectrumFigure):
             if wcom_temp is not None:
                 wcom[idx] = np.abs(np.imag(wcom_temp))
                 omega[idx] = omega_temp
-            print(idx, omega_temp)
+            print(idx, omega_temp, wcom_temp)
 
         print("Max value of wcom is %.5e." %np.max(np.abs(wcom)))
         print("Min value of wcom is %.5e." %np.min(np.abs(wcom > 0.0)))
