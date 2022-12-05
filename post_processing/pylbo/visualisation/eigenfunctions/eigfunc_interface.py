@@ -11,7 +11,7 @@ from pylbo.utilities.logger import pylboLogger
 class EigenfunctionInterface:
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, data, axis, spec_axis, draw_resonance):
+    def __init__(self, data, axis, spec_axis, draw_resonance=False):
         self.data = data
         self.axis = axis
         self.spec_axis = spec_axis
