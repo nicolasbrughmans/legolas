@@ -35,9 +35,9 @@ class EigenfunctionHandler(EigenfunctionInterface):
             for ev_idx, efs in zip(idxs, ef_container):
                 ef = efs.get(ef_name)
                 if self._use_real_part:
-                    ef = ef.real
+                    ef = ef.real/np.max(np.abs(np.real(ef)))
                 else:
-                    ef = ef.imag
+                    ef = ef.imag/np.max(np.abs(np.imag(ef)))
                 # check for retransform
                 if (
                     self._retransform
