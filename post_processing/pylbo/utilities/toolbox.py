@@ -7,6 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import simps
 from pylbo._version import _mpl_version
 from pylbo.utilities.logger import pylboLogger
+import matplotlib.pyplot as plt
 
 
 def timethis(func):
@@ -299,144 +300,9 @@ def calculate_wcom(ds, index, return_ev=False):
 
     derived_eigfuncs = ds.get_derived_eigenfunctions(ev_idxs=[index], mute=True)
 
-    # vr_ef = eigfuncs[0].get("v1")
-    # T_ef = eigfuncs[0].get("T")
-    # rho_ef = eigfuncs[0].get("rho")
-    # Q1_ef = derived_eigfuncs[0].get("B1") # this does actually not play a role in the pressure perturbation
-    # Q2_ef = derived_eigfuncs[0].get("B2")
-    # Q3_ef = derived_eigfuncs[0].get("B3")
-
-    # B02 = ds.equilibria["B02"]
-    # B03 = ds.equilibria["B03"]
-    # B0 = np.sqrt(B02**2 + B03**2)
-    # rho0 = ds.equilibria["rho0"]
-    # T0 = ds.equilibria["T0"]
-    # p0 = rho0*T0
-    # P_tot0 = rho0*T0 + 0.5*(B02**2+B03**2)
-
-    # r_ef = ds.ef_grid
-    # r = ds.grid_gauss
-
-    # vr_ef_highres = interp1d(r_ef, vr_ef)(r)
-    # v02 = ds.equilibria["v02"]
-    # v03 = ds.equilibria["v03"]
-    # v02_lowres = interp1d(r, v02, fill_value="extrapolate")(r_ef)
-    # v03_lowres = interp1d(r, v03, fill_value="extrapolate")(r_ef)
-
-    # chi = r_ef*vr_ef/(v02_lowres*ds.parameters["k2"]*1j + v03_lowres*ds.parameters["k3"]*1j - omega_ef*1j) 
-
-    # Q2_highres = interp1d(r_ef, Q2_ef)(r)
-    # Q3_highres = interp1d(r_ef, Q3_ef)(r)
-    # T_highres = interp1d(r_ef, T_ef)(r)
-    # rho_highres = interp1d(r_ef, rho_ef)(r)
-    # chi_highres = interp1d(r_ef, chi)(r)
-
-    # ### Necessary parameters
-    # m = ds.parameters["k2"]
-    # k = ds.parameters["k3"]
-    # gamma = ds.gamma
-    # Omega = ds.equilibria["v02"]/r
-    # Omega0 = m*Omega + k*v03
-    # omegatilde = omega_ef - Omega0
-
-    # F = m*B02/r + k*B03
-    # k_par = F/B0
-    # omegaAsq = F**2 / rho0
-    # G = m*B03/r - k*B02
-    # k_perp = G/B0
-    # hsq = m**2/r**2 + k**2
-
-    # incompressible = (gamma > 1e6)
-
-    # # compressible version of the factors:
-    # if not incompressible:
-
-    #     omegaSsq = gamma*rho0*T0 / (gamma*rho0*T0 + B02**2+B03**2) * omegaAsq
-        
-    #     Anjo = rho0*(omegatilde**2-omegaAsq)
-    #     Snjo = rho0*(gamma*rho0*T0 + B02**2+B03**2)*(omegatilde**2-omegaSsq)
-    #     N = Anjo*Snjo/r
-    #     D = (rho0**2 * omegatilde**4) - hsq*Snjo
-    
-    #     P = B02/r * F + rho0*Omega*omegatilde    
-    #     Q = B02/r * (F*P + B02/r*Anjo)
-    #     Lambda = np.gradient(P_tot0)/r + B02**2/r**2 # Deviation from Keplerian rotation due to Lorentz forces
-    #     C = 2/r**2 * (m*Snjo*P - r**2*rho0*omegatilde**2*(Q - 0.5*Anjo*Lambda)) # some of these terms are zero, but for later use a full implementation might be nice.
-
-    #     if index == 672:
-    #         print("Snjo = %.5e" %np.abs(np.mean(Snjo)))
-    #         print("D = %.5e" %np.abs(np.mean(D)))
-    #         print("C = %.5e" %np.abs(np.mean(C)))
-    #         print("N = %.5e" %np.abs(np.mean(N)))
-    #         print(D[D==0.0])
-
-    # # incompressible limit of the factors:
-    # if incompressible:
-        
-    #     ND = - rho0*(omegatilde**2-omegaAsq) / (r*hsq)
-
-    #     CD = - 2*m*(B02*F + rho0*r*Omega*omegatilde) / (r**3*hsq) # this is zero for MRI m=0!!
-
-    # chiprime = np.gradient(chi)
-    # chiprime_highres = interp1d(r_ef, chiprime)(r)
-
-    # ksiprime = np.gradient(chi*r_ef)
-    # ksiprime_highres = interp1d(r_ef, ksiprime)(r)
-
-    # ### Calculate the ksi vector: 13.93/4
-    # ksi = chi_highres/r
-    # if not incompressible:
-    #     eta = ((G*Snjo)*chiprime_highres - 2*((k*gamma*p0*F*P) \
-    #         - r*((P*B03/r)-(G*B02**2/r**2)+(0.5*G*Lambda))*rho0*omegatilde**2)*chi_highres) / (r*B0*D)
-    #     zeta = ((F*gamma*p0*Anjo)*chiprime_highres + 2*((k*gamma*p0*G*P) \
-    #         + r*((P*B02/r)-(F*B02**2/r**2)+(0.5*F*Lambda))*(rho0*omegatilde**2-hsq*B0**2))*chi_highres) / (r*B0*D)
-    # if incompressible:
-    #     eta = (-k_perp*chiprime_highres + 2*k*k_par*(B02*F + rho0*v02*omegatilde)*chi_highres/(r*rho0*(omegatilde**2-omegaAsq))) / (r*hsq)
-    #     zeta = (-k_par*chiprime_highres - 2*k*k_perp*(B02*F + rho0*v02*omegatilde)*chi_highres/(r*rho0*(omegatilde**2-omegaAsq))) / (r*hsq)
-
-    # vecKsi = np.array([ksi,-eta*1j,-zeta*1j])
-
-    # ### Calculate div(vec ksi)
-    # divKsi = chiprime_highres/r + eta*k_perp + zeta*k_par
-    # divKsiStar = np.conj(chiprime_highres)/r - np.conj(eta)*k_perp - np.conj(zeta)*k_par
-
-    # ### Calculate vector Q (but this can also be obtained from Legolas derived eigfunc output... Is rotation the same though?)
-    # Qr = 1j * F * ksi
-    # Qtheta = -(np.gradient(B02*ksi) - k*B0*eta)
-    # Qz = -(np.gradient(r*B03*ksi) + m*B0*eta) / r
-    # Qperp = (B03*Qtheta - B02*Qz)/B0
-    # Qpar = (B02*Qtheta + B03*Qz)/B0
-    # vecQ = np.array([Qr,Qperp,Qpar])
-
-    # ### Calculate scalar v/cdot/nabla (because vector v has no r-component)
-    # v_dot_nabla = (B03*v02 - B02*v03)*k_perp*1j/B0 + (B02*v02 + B03*v03)*k_par*1j/B0
-
-    # ### Calculate terms from 13.74/78
-    # term1 = np.zeros_like(divKsi)
-    # if not incompressible:
-    #     term1 = term1 + (gamma*p0 * divKsi * divKsiStar)
-    #     term1 = term1 + np.conj(vecKsi[0])*np.gradient(gamma*p0*divKsi) - (np.conj(vecKsi[1])*k_perp+np.conj(vecKsi[2])*k_par)*(gamma*p0*divKsi)
-
-    # term2 = F*1j *(np.conj(vecKsi[0])*vecQ[0] + np.conj(vecKsi[1])*vecQ[1] + np.conj(vecKsi[2])*vecQ[2])
-    # term2 = term2 - np.conj(vecKsi[0])*np.gradient(B02*Qtheta + B03*Qz) + (np.conj(vecKsi[1])*k_perp+np.conj(vecKsi[2])*k_par)*(B02*Qtheta + B03*Qz)
-    # if not incompressible:
-    #     term2 = term2 - divKsiStar*(B02*Qtheta + B03*Qz) 
-
-    # p_along_ksi = vecKsi[0]*np.gradient(p0) + (vecKsi[1]*k_perp+vecKsi[2]*k_par)*(p0)
-    # term3 = np.conj(vecKsi[0])*np.gradient(p_along_ksi) - (np.conj(vecKsi[1])*k_perp + np.conj(vecKsi[2])*k_par)*(p_along_ksi)
-    # if not incompressible:
-    #     term3 = term3 + p_along_ksi*divKsiStar
-
-    # term4 = - v_dot_nabla**2 * rho0 * (vecKsi[0]*np.conj(vecKsi[0]) + vecKsi[1]*np.conj(vecKsi[1]) + vecKsi[2]*np.conj(vecKsi[2]))
-    # term4 = term4 - v_dot_nabla * rho0 * (vecKsi[0]*np.conj(vecKsi[0]) + vecKsi[1]*np.conj(vecKsi[1]) + vecKsi[2]*np.conj(vecKsi[2])) * ((B03*v02 - B02*v03)*k_perp*1j/B0 + (B02*v02 + B03*v03)*k_par*1j/B0)
-    # # actually the same as the previous thing in this equilibrium!
-
-    # # print(np.max(np.abs(np.real(term1))), np.max(np.abs(np.imag(term1))))
-    # # print(np.max(np.abs(np.real(term2))), np.max(np.abs(np.imag(term2))))
-    # # print(np.max(np.abs(np.real(term3))), np.max(np.abs(np.imag(term3))))
-    # # print(np.max(np.abs(np.real(term4))), np.max(np.abs(np.imag(term4))))
-
     vr_ef = eigfuncs[0].get("v1")
+    vtheta_ef = eigfuncs[0].get("v2")
+    vz_ef = eigfuncs[0].get("v3")
     T_ef = eigfuncs[0].get("T")
     rho_ef = eigfuncs[0].get("rho")
     Q1_ef = derived_eigfuncs[0].get("B1") # this does actually not play a role in the pressure perturbation
@@ -449,24 +315,24 @@ def calculate_wcom(ds, index, return_ev=False):
     B02 = interp1d(r, ds.equilibria["B02"], fill_value="extrapolate")(r_ef)
     B03 = interp1d(r, ds.equilibria["B03"], fill_value="extrapolate")(r_ef)
     B0 = np.sqrt(B02**2 + B03**2)
+    B_total = np.sqrt((B02+Q2_ef)**2+(B03+Q3_ef)**2)
     rho0 = interp1d(r, ds.equilibria["rho0"], fill_value="extrapolate")(r_ef)
     T0 = interp1d(r, ds.equilibria["T0"], fill_value="extrapolate")(r_ef)
     p0 = rho0*T0
-    P_tot = rho0*T0 + 0.5*(B02**2+B03**2)
+    gradp0 = np.gradient(ds.equilibria["rho0"]*ds.equilibria["T0"], r, edge_order=2)
+    P_tot = p0 + 0.5*B0**2
+    gradP_tot = gradp0 + 0.5*np.gradient(ds.equilibria["B0"]**2, r, edge_order=2)
+    gradp0 = interp1d(r, gradp0, fill_value="extrapolate")(r_ef)
+    gradP_tot = interp1d(r, gradP_tot, fill_value="extrapolate")(r_ef)
 
-    vr_ef_highres = interp1d(r_ef, vr_ef)(r)
+    gradv02 = np.gradient(ds.equilibria["v02"], r, edge_order=2)
+    gradv02 = interp1d(r, gradv02, fill_value="extrapolate")(r_ef)
+    gradv03 = np.gradient(ds.equilibria["v03"], r, edge_order=2)
+    gradv03 = interp1d(r, gradv03, fill_value="extrapolate")(r_ef)
+
     v02 = interp1d(r, ds.equilibria["v02"], fill_value="extrapolate")(r_ef)
     v03 = interp1d(r, ds.equilibria["v03"], fill_value="extrapolate")(r_ef)
-
-    chi = r_ef*vr_ef/(v02*ds.parameters["k2"]*1j + v03*ds.parameters["k3"]*1j - omega_ef*1j) 
-
-    Q2_highres = interp1d(r_ef, Q2_ef)(r)
-    Q3_highres = interp1d(r_ef, Q3_ef)(r)
-    T_highres = interp1d(r_ef, T_ef)(r)
-    rho_highres = interp1d(r_ef, rho_ef)(r)
-    chi_highres = interp1d(r_ef, chi)(r)
-
-    r = r_ef
+    Phiprime0 = interp1d(r, ds.equilibria['grav'], fill_value="extrapolate")(r_ef)
 
     ### Necessary parameters
     m = ds.parameters["k2"]
@@ -476,16 +342,30 @@ def calculate_wcom(ds, index, return_ev=False):
     Omega0 = m*Omega + k*v03
     omegatilde = omega_ef - Omega0
 
-    F = m*B02/r + k*B03
+    F = m*B02/r_ef + k*B03
     k_par = F/B0
     omegaAsq = F**2 / rho0
-    G = m*B03/r - k*B02
+    G = m*B03/r_ef - k*B02
     k_perp = G/B0
-    hsq = m**2/r**2 + k**2
+    hsq = m**2/r_ef**2 + k**2
 
     incompressible = False
     if gamma > 1e6: incompressible = True
 
+
+    ### The crucial eigenfunctions: 
+    chi = r_ef* (-vr_ef / (1j*omegatilde))
+    ksi_theta = vr_ef * (gradv02 - Omega)/omegatilde**2 - vtheta_ef / (omegatilde*1j)
+    ksi_z = vr_ef * (-gradv03)/omegatilde**2 - vz_ef / (omegatilde*1j)
+
+    # ### The  corrected crucial eigenfunctions:
+    # chi = r_ef* (-vr_ef / (1j*omegatilde))
+    # ksi_theta = vr_ef * (-gradv02)/omegatilde**2 - vtheta_ef / (omegatilde*1j)
+    # ksi_z = vr_ef * (gradv03)/omegatilde**2 - vz_ef / (omegatilde*1j)
+
+    r = r_ef
+
+    ### Calculating the field-based coordinates
     # compressible version of the factors:
     if not incompressible:
 
@@ -498,7 +378,7 @@ def calculate_wcom(ds, index, return_ev=False):
     
         P = B02/r * F + rho0*Omega*omegatilde    
         Q = B02/r * (F*P + B02/r*Anjo)
-        Lambda = np.gradient(P_tot)/r + B02**2/r**2 # Deviation from Keplerian rotation due to Lorentz forces
+        Lambda = rho0*(v02**2/r**2 - Phiprime0/r) # Deviation from Keplerian rotation due to Lorentz forces, = gradP_tot/r + B02**2/r**2
         C = 2/r**2 * (m*Snjo*P - r**2*rho0*omegatilde**2*(Q - 0.5*Anjo*Lambda)) # some of these terms are zero, but for later use a full implementation might be nice.
 
         ND = N/D
@@ -511,13 +391,7 @@ def calculate_wcom(ds, index, return_ev=False):
 
         CD = - 2*m*(B02*F + rho0*r*Omega*omegatilde) / (r**3*hsq) # this is zero for MRI m=0!!
 
-    chiprime = np.gradient(chi)
-
-    ksiprime = np.gradient(chi*r_ef)
-
-    Pi = -ND * chiprime - CD * chi
-
-    p_ef = T_ef*rho0 + rho_ef*T0      # p1 = rho0 T1 + rho1 T0
+    chiprime = np.gradient(chi, r, edge_order=2)
 
     ### Calculate the ksi vector: 13.93/4
     ksi = chi/r
@@ -530,8 +404,45 @@ def calculate_wcom(ds, index, return_ev=False):
         eta = (-k_perp*chiprime + 2*k*k_par*(B02*F + rho0*v02*omegatilde)*chi/(r*rho0*(omegatilde**2-omegaAsq))) / (r*hsq)
         zeta = (-k_par*chiprime - 2*k*k_perp*(B02*F + rho0*v02*omegatilde)*chi/(r*rho0*(omegatilde**2-omegaAsq))) / (r*hsq)
 
-    # plt.plot(r, np.real(eta))
-    # plt.plot(r, np.real(zeta))
+    ### Alternative definition of eta/zeta:
+    eta_easy = 1j * ((B03)*ksi_theta - (B02)*ksi_z) / B0
+    zeta_easy = 1j * ((B02)*ksi_theta + (B03)*ksi_z) / B0
+
+    eta_easy = eta_easy #/ np.real(eta_easy[-10]) * np.real(eta[-10])
+    zeta_easy = zeta_easy #/ np.real(zeta_easy[-75]) * np.real(zeta[-75])
+
+    # eta = eta_easy
+    # zeta = zeta_easy
+
+    # # Scaling and rotating result based on these values
+    # r_one = np.abs(eta[2])
+    # r_easy = np.abs(eta_easy[2])
+    # theta_one = np.arctan(np.imag(eta[2])/np.real(eta[2]))
+    # print(theta_one)
+    # if np.sign(eta[2].real) < 0.0: theta_one = theta_one + np.pi
+    # theta_easy = np.arctan(np.imag(eta_easy[2])/np.real(eta_easy[2]))
+    # if np.sign(eta_easy[2].real) < 0.0: theta_easy = theta_easy + np.pi
+    # r_scale = r_one/r_easy
+    # theta_scale = theta_one - theta_easy
+    # rotation = r_scale * np.exp(theta_scale*1j)
+
+    # eta_easy = eta_easy*rotation
+    # zeta_easy = zeta_easy*rotation
+
+    # plt.figure()
+    # plt.plot(r, np.real(eta), color='C0')
+    # plt.plot(r, np.real(eta_easy), color='C0', linestyle='dotted')
+    # plt.plot(r, np.real(zeta), color='C1')
+    # plt.plot(r, np.real(zeta_easy), color='C1', linestyle='dotted')
+    # plt.title('Zeta (real part)')
+    # # plt.ylim([-8e-7,8e-7])
+    # plt.figure()
+    # plt.plot(r, np.imag(eta), color='C0')
+    # plt.plot(r, np.imag(eta_easy), color='C0', linestyle='dotted')
+    # plt.plot(r, np.imag(zeta), color='C1')
+    # plt.plot(r, np.imag(zeta_easy), color='C1', linestyle='dotted')
+    # plt.title('Zeta (imag part)')
+    # # plt.ylim([-8e-6,8e-6])
     # plt.show()
 
     vecKsi = np.array([ksi,-eta*1j,-zeta*1j])
@@ -542,8 +453,8 @@ def calculate_wcom(ds, index, return_ev=False):
 
     ### Calculate vector Q (but this can also be obtained from Legolas derived eigfunc output... Is rotation the same though?)
     Qr = 1j * F * ksi
-    Qtheta = -(np.gradient(B02*ksi) - k*B0*eta)
-    Qz = -(np.gradient(r*B03*ksi) + m*B0*eta) / r
+    Qtheta = -(np.gradient(B02*ksi, r, edge_order=2) - k*B0*eta)
+    Qz = -(np.gradient(r*B03*ksi, r, edge_order=2) + m*B0*eta) / r
     Qperp = (B03*Qtheta - B02*Qz)/B0
     Qpar = (B02*Qtheta + B03*Qz)/B0
     vecQ = np.array([Qr,Qperp,Qpar])
@@ -555,15 +466,15 @@ def calculate_wcom(ds, index, return_ev=False):
     term1 = np.zeros_like(divKsi)
     if not incompressible:
         term1 = term1 + (gamma*p0 * divKsi * divKsiStar)
-        term1 = term1 + np.conj(vecKsi[0])*np.gradient(gamma*p0*divKsi) - (np.conj(vecKsi[1])*k_perp+np.conj(vecKsi[2])*k_par)*(gamma*p0*divKsi)
+        term1 = term1 + np.conj(vecKsi[0])*gamma*(gradp0*divKsi + p0*np.gradient(divKsi, r, edge_order=2)) - (np.conj(vecKsi[1])*k_perp+np.conj(vecKsi[2])*k_par)*(gamma*p0*divKsi)
 
     term2 = F*1j *(np.conj(vecKsi[0])*vecQ[0] + np.conj(vecKsi[1])*vecQ[1] + np.conj(vecKsi[2])*vecQ[2])
-    term2 = term2 - np.conj(vecKsi[0])*np.gradient(B02*Qtheta + B03*Qz) + (np.conj(vecKsi[1])*k_perp+np.conj(vecKsi[2])*k_par)*(B02*Qtheta + B03*Qz)
+    term2 = term2 - np.conj(vecKsi[0])*np.gradient(B02*Qtheta + B03*Qz, r, edge_order=2) + (np.conj(vecKsi[1])*k_perp+np.conj(vecKsi[2])*k_par)*(B02*Qtheta + B03*Qz)
     if not incompressible:
         term2 = term2 - divKsiStar*(B02*Qtheta + B03*Qz) 
 
-    p_along_ksi = vecKsi[0]*np.gradient(p0) + (vecKsi[1]*k_perp+vecKsi[2]*k_par)*(p0)
-    term3 = np.conj(vecKsi[0])*np.gradient(p_along_ksi) - (np.conj(vecKsi[1])*k_perp + np.conj(vecKsi[2])*k_par)*(p_along_ksi)
+    p_along_ksi = vecKsi[0]*gradp0 + (vecKsi[1]*k_perp+vecKsi[2]*k_par)*(p0)
+    term3 = np.conj(vecKsi[0])*np.gradient(p_along_ksi, r, edge_order=2) - (np.conj(vecKsi[1])*k_perp + np.conj(vecKsi[2])*k_par)*(p_along_ksi)
     if not incompressible:
         term3 = term3 + p_along_ksi*divKsiStar
 
@@ -571,9 +482,10 @@ def calculate_wcom(ds, index, return_ev=False):
     term4 = term4 - v_dot_nabla * rho0 * (vecKsi[0]*np.conj(vecKsi[0]) + vecKsi[1]*np.conj(vecKsi[1]) + vecKsi[2]*np.conj(vecKsi[2])) * ((B03*v02 - B02*v03)*k_perp*1j/B0 + (B02*v02 + B03*v03)*k_par*1j/B0)
     # actually the same as the previous thing in this equilibrium!
 
-    # for term in [term1,term2,term3,term4,np.gradient(gamma*p0*divKsi)]:
+    # for term,title in zip([term1,term2,term3,term4,np.gradient(B02*Qtheta + B03*Qz, edge_order=2)], ["term1","term2","term3","term4","np.gradient(B02*Qtheta + B03*Qz, r, edge_order=2)"]):
     #     plt.figure()
     #     plt.plot(r, np.real(term))
+    #     plt.title(title)
     # plt.show()
 
     # print(np.max(np.abs(np.real(term1))), np.max(np.abs(np.imag(term1))))
