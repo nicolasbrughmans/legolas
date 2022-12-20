@@ -76,8 +76,9 @@ class SingleSpectrumPlot(SpectrumFigure):
         for idx in range(0,len(self.w_real)):
             wcom_temp, omega_temp = calculate_wcom(self.dataset, idx, return_ev=True)
             if wcom_temp is not None:
-                wcom[idx] = np.abs(np.imag(wcom_temp))
-                omega[idx] = omega_temp
+                if np.abs(np.imag(wcom_temp)) > 1e-10:
+                    wcom[idx] = np.abs(np.imag(wcom_temp))
+                    omega[idx] = omega_temp
             print(idx, omega_temp, wcom_temp)
 
         print("Max value of wcom is %.5e." %np.max(np.abs(wcom)))
@@ -91,7 +92,7 @@ class SingleSpectrumPlot(SpectrumFigure):
             marker=self.marker,
             c=wcom,
             cmap=mpl.pyplot.cm.RdYlGn_r, 
-            norm=mpl.colors.LogNorm(np.max([1e-13,np.min(np.abs(wcom))]),np.max([1e-12, np.max(np.abs(wcom))])),
+            norm=mpl.colors.LogNorm(np.max([10**(-6.5),np.min(np.abs(wcom))]),np.max([1e-12,np.min([1e-1, np.max(np.abs(wcom))])])),
             s=self.markersize**2,
             alpha=self.alpha,
             linestyle="None",
