@@ -98,6 +98,7 @@ class SingleSpectrumPlot(SpectrumFigure):
             linestyle="None",
             **self.plot_props,
         )
+        # This should be done better because now sometimes the largest fast mode is selected erroneously.
         (spectrum_point,) = self.ax.plot(
             np.real(omega_remaining) * self.x_scaling,
             np.imag(omega_remaining) * self.y_scaling,
