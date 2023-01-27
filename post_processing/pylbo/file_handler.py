@@ -67,12 +67,12 @@ def load(datfile):
         pylboLogger.info("eigenfunctions present in datfile")
     if ds.header.get("derived_eigenfuncs_written", False):
         pylboLogger.info("derived eigenfunctions present in datfile")
-    if ds.header.get("eigenfunction_subset_used", False):
-        saved_efs = len(ds.header["ef_written_idxs"])
-        total_efs = len(ds.eigenvalues)
-        pylboLogger.info(
-            f"subset saved: {saved_efs}/{total_efs} eigenvalues have eigenfunctions"
-        )
+    # if ds.header.get("eigenfunction_subset_used", False):
+    #     saved_efs = len(ds.header["ef_written_idxs"])
+    #     total_efs = len(ds.eigenvalues)
+    #     pylboLogger.info(
+    #         f"subset saved: {saved_efs}/{total_efs} eigenvalues have eigenfunctions"
+    #     )
     pylboLogger.info("-" * 75)
     return ds
 
