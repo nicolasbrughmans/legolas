@@ -49,7 +49,7 @@ class SingleSpectrumPlot(SpectrumFigure):
         super()._set_plot_properties(kwargs)
 
         self._use_residuals = use_residuals
-        (self._nonzero_w_idxs,) = np.where(abs(dataset.eigenvalues) > 1e-12)
+        (self._nonzero_w_idxs,) = np.where(np.abs(dataset.eigenvalues) > 1e-12)
 
     def add_spectrum(self):
         """Adds the spectrum to the plot, makes the points pickable."""
@@ -79,8 +79,9 @@ class SingleSpectrumPlot(SpectrumFigure):
     def add_spectrum_wcom(self):
         """Adds a clickable spectrum to the plot and colours it by values of abs of imaginary part of Wcom. 
         If no eigfunc present, colors it in standard color."""
-        wcom, omega = np.zeros_like(self.w_real), np.zeros_like(self.w_real, dtype="complex")
-        for idx in range(0,len(self.w_real)):
+        w_real = self.dataset.eigenvalues[self._nonzero_w_idxs].real
+        wcom, omega = np.zeros_like(w_real), np.zeros_like(w_real, dtype="complex")
+        for idx in range(0,len(w_real)):
             wcom_temp, omega_temp = calculate_wcom(self.dataset, idx, return_ev=True)
             if wcom_temp is not None:
                 if np.abs(np.imag(wcom_temp)) > 1e-10:
@@ -130,59 +131,59 @@ class SingleSpectrumPlot(SpectrumFigure):
         self.ax.set_ylabel(r"Im($\omega$)")
         self.ax.set_title(self.dataset.eq_type)
 
-    def add_spectrum_wcom(self):
-        """Adds a clickable spectrum to the plot and colours it by values of abs of imaginary part of Wcom. 
-        If no eigfunc present, colors it in standard color."""
-        wcom, omega = np.zeros_like(self.w_real), np.zeros_like(self.w_real, dtype="complex")
-        for idx in range(0,len(self.w_real)):
-            wcom_temp, omega_temp = calculate_wcom(self.dataset, idx, return_ev=True)
-            if wcom_temp is not None:
-                if np.abs(np.imag(wcom_temp)) > 1e-10:
-                    wcom[idx] = np.abs(np.imag(wcom_temp))
-                    omega[idx] = omega_temp
-            print(idx, omega_temp, wcom_temp)
+    # def add_spectrum_wcom(self):
+    #     """Adds a clickable spectrum to the plot and colours it by values of abs of imaginary part of Wcom. 
+    #     If no eigfunc present, colors it in standard color."""
+    #     wcom, omega = np.zeros_like(self.w_real), np.zeros_like(self.w_real, dtype="complex")
+    #     for idx in range(0,len(self.w_real)):
+    #         wcom_temp, omega_temp = calculate_wcom(self.dataset, idx, return_ev=True)
+    #         if wcom_temp is not None:
+    #             if np.abs(np.imag(wcom_temp)) > 1e-10:
+    #                 wcom[idx] = np.abs(np.imag(wcom_temp))
+    #                 omega[idx] = omega_temp
+    #         print(idx, omega_temp, wcom_temp)
 
-        print("Max value of wcom is %.5e." %np.max(np.abs(wcom)))
-        print("Min value of wcom is %.5e." %np.min(np.abs(wcom > 0.0)))
+    #     print("Max value of wcom is %.5e." %np.max(np.abs(wcom)))
+    #     print("Min value of wcom is %.5e." %np.min(np.abs(wcom > 0.0)))
 
-        omega_remaining = np.setdiff1d(self.dataset.eigenvalues, omega)
+    #     omega_remaining = np.setdiff1d(self.dataset.eigenvalues, omega)
 
-        spectrum_points_wcom = self.ax.scatter(
-            np.real(omega) * self.x_scaling,
-            np.imag(omega) * self.y_scaling,
-            marker=self.marker,
-            c=wcom,
-            cmap=mpl.pyplot.cm.RdYlGn_r, 
-            norm=mpl.colors.LogNorm(np.max([10**(-6.5),np.min(np.abs(wcom))]),np.max([1e-12,np.min([1e-1, np.max(np.abs(wcom))])])),
-            s=self.markersize**2,
-            alpha=self.alpha,
-            linestyle="None",
-            **self.plot_props,
-        )
-        # This should be done better because now sometimes the largest fast mode is selected erroneously.
-        (spectrum_point,) = self.ax.plot(
-            np.real(omega_remaining) * self.x_scaling,
-            np.imag(omega_remaining) * self.y_scaling,
-            marker=self.marker,
-            color=self.color,
-            markersize=self.markersize,
-            alpha=self.alpha,
-            linestyle="None",
-            **self.plot_props,
-        )
-        # set dataset associated with this line of points
-        setattr(spectrum_points_wcom, "dataset", self.dataset)
-        add_pickradius_to_item(item=spectrum_points_wcom, pickradius=10)
-        setattr(spectrum_point, "dataset", self.dataset)
-        add_pickradius_to_item(item=spectrum_point, pickradius=10)
-        self.cbar = self.fig.colorbar(spectrum_points_wcom, ax=self.ax, label="Wcom")
-        if self._use_residuals:
-            self.cbar = self.fig.colorbar(spectrum_points, ax=self.ax, label="Residual")
-        self.ax.axhline(y=0, linestyle="dotted", color="grey", alpha=0.3)
-        self.ax.axvline(x=0, linestyle="dotted", color="grey", alpha=0.3)
-        self.ax.set_xlabel(r"Re($\omega$)")
-        self.ax.set_ylabel(r"Im($\omega$)")
-        self.ax.set_title(self.dataset.eq_type)
+    #     spectrum_points_wcom = self.ax.scatter(
+    #         np.real(omega) * self.x_scaling,
+    #         np.imag(omega) * self.y_scaling,
+    #         marker=self.marker,
+    #         c=wcom,
+    #         cmap=mpl.pyplot.cm.RdYlGn_r, 
+    #         norm=mpl.colors.LogNorm(np.max([10**(-6.5),np.min(np.abs(wcom))]),np.max([1e-12,np.min([1e-1, np.max(np.abs(wcom))])])),
+    #         s=self.markersize**2,
+    #         alpha=self.alpha,
+    #         linestyle="None",
+    #         **self.plot_props,
+    #     )
+    #     # This should be done better because now sometimes the largest fast mode is selected erroneously.
+    #     (spectrum_point,) = self.ax.plot(
+    #         np.real(omega_remaining) * self.x_scaling,
+    #         np.imag(omega_remaining) * self.y_scaling,
+    #         marker=self.marker,
+    #         color=self.color,
+    #         markersize=self.markersize,
+    #         alpha=self.alpha,
+    #         linestyle="None",
+    #         **self.plot_props,
+    #     )
+    #     # set dataset associated with this line of points
+    #     setattr(spectrum_points_wcom, "dataset", self.dataset)
+    #     add_pickradius_to_item(item=spectrum_points_wcom, pickradius=10)
+    #     setattr(spectrum_point, "dataset", self.dataset)
+    #     add_pickradius_to_item(item=spectrum_point, pickradius=10)
+    #     self.cbar = self.fig.colorbar(spectrum_points_wcom, ax=self.ax, label="Wcom")
+    #     if self._use_residuals:
+    #         self.cbar = self.fig.colorbar(spectrum_points, ax=self.ax, label="Residual")
+    #     self.ax.axhline(y=0, linestyle="dotted", color="grey", alpha=0.3)
+    #     self.ax.axvline(x=0, linestyle="dotted", color="grey", alpha=0.3)
+    #     self.ax.set_xlabel(r"Re($\omega$)")
+    #     self.ax.set_ylabel(r"Im($\omega$)")
+    #     self.ax.set_title(self.dataset.eq_type)
 
     def add_continua(self, interactive=True):
         """
