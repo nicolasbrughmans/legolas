@@ -49,11 +49,8 @@ contains
     call matrix_to_array(matrix=matrix_A, array=array_A)
 
     jobvl = "N"
-    if (should_compute_eigenvectors()) then
-      jobvr = "V"
-    else
-      jobvr = "N"
-    end if
+    jobvr = "N"
+    if (settings%io%should_compute_eigenvectors()) jobvr = "V"
     ! set array dimensions
     N = matrix_A%matrix_dim
     lda = N
@@ -74,18 +71,14 @@ contains
     allocate(work(lwork))
 
     ! solve eigenvalue problem
-    call log_message("solving evp using QZ algorithm zggev (LAPACK)", level="debug")
-    call zggev( &
+    call logger%debug("solving evp using QZ algorithm zggev (LAPACK)")
+    call zggev3( &
       jobvl, jobvr, N, array_A, lda, array_B, ldb, &
       alpha, beta, vl, ldvl, vr, ldvr, work, lwork, rwork, info &
     )
     if (info /= 0) then ! LCOV_EXCL_START
-      call log_message("LAPACK routine zggev failed!", level="warning")
-      call log_message( &
-        "value for the info parameter: " // str(info), &
-        level="warning", &
-        use_prefix=.false. &
-      )
+      call logger%warning("LAPACK routine zggev failed!")
+      call logger%warning("value for the info parameter: " // str(info))
     end if ! LCOV_EXCL_STOP
     omega = alpha / beta
 

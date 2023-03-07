@@ -25,24 +25,21 @@ submodule (mod_equilibrium) smod_equil_tc_pinch
 
 contains
 
-  module subroutine tc_pinch_eq()
-    use mod_global_variables, only: coaxial
+  module procedure tc_pinch_eq
     use mod_equilibrium_params, only: cte_rho0, cte_B02, alpha, beta, tau
-    use mod_global_variables, only: viscosity_value, use_fixed_resistivity, fixed_eta_value
 
-    real(dp)    :: r, h, A, B, A2, B2, Bc1, Bc2, Bc3, Tstart, Tend, Ta, Ha, Re, Pm
-    integer     :: i
+    real(dp) :: r, h, A, B, A2, B2, Bc1, Bc2, Bc3, Tstart, Tend, Ta, Ha, Re, Pm
+    real(dp) :: x_start, x_end
+    real(dp) :: fixed_eta_value, viscosity_value
+    integer :: i, gauss_gridpts
 
-    call allow_geometry_override(default_geometry='cylindrical', default_x_start=1.0d0, default_x_end=2.0d0)
-    call initialise_grid()
+    call settings%physics%enable_flow()
 
-    flow = .true.
-    resistivity = .true.
-    use_fixed_resistivity = .true.
-    viscosity = .true.
-    coaxial = .true.
+    settings%grid%coaxial = .true.
 
-    if (use_defaults) then
+    if (settings%equilibrium%use_defaults) then
+      call settings%grid%set_geometry("cylindrical")
+      call settings%grid%set_grid_boundaries(1.0_dp, 2.0_dp)
       cte_rho0 = 1.0d3
       alpha = 1.0d-6
       beta = 1.5d-6
@@ -52,9 +49,17 @@ contains
       k2 = 0.0d0
       k3 = 1.0d0
 
-      viscosity_value = 1.0d-6
-      fixed_eta_value = 1.0d-4
+      call settings%physics%enable_resistivity(fixed_resistivity_value=1.0e-4_dp)
+      call settings%physics%enable_viscosity(viscosity_value=1.0e-6_dp)
     end if
+    x_start = settings%grid%get_grid_start()
+    x_end = settings%grid%get_grid_end()
+    gauss_gridpts = settings%grid%get_gauss_gridpts()
+    call initialise_grid(settings)
+
+
+    fixed_eta_value = settings%physics%resistivity%get_fixed_resistivity()
+    viscosity_value = settings%physics%viscosity%get_viscosity_value()
 
     rho_field % rho0 = cte_rho0
 
@@ -105,15 +110,15 @@ contains
 
     Ta = (cte_rho0 * (v_field % v02(int(gauss_gridpts/2))) * h / viscosity_value)**2 &
           * 2.0d0 * h / (x_start + x_end)
-    call log_message('Taylor number:    ' // str(Ta, fmt='(e8.2)'), level='info')
+    call logger%info("Taylor number:  " // str(Ta, fmt=exp_fmt))
     Pm = viscosity_value / (cte_rho0 * fixed_eta_value)
-    call log_message('Prandtl number:   ' // str(Pm, fmt='(e8.2)'), level='info')
+    call logger%info("Prandtl number: " // str(Pm, fmt=exp_fmt))
     Ha = cte_B02 * sqrt(x_start * (x_end - x_start)) &
           / sqrt(viscosity_value * fixed_eta_value)
-    call log_message('Hartmann number:  ' // str(Ha, fmt='(e8.2)'), level='info')
+    call logger%info("Hartmann number " // str(Ha, fmt=exp_fmt))
     Re = alpha * cte_rho0 * x_start * (x_end - x_start) / viscosity_value
-    call log_message('Reynolds number:  ' // str(Re, fmt='(e8.2)'), level='info')
+    call logger%info("Reynolds number " // str(Re, fmt=exp_fmt))
 
-  end subroutine tc_pinch_eq
+  end procedure tc_pinch_eq
 
 end submodule smod_equil_tc_pinch

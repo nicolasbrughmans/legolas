@@ -2,7 +2,6 @@
 !> Submodule containing the implementation of the inverse iteration algorithm.
 !! TODO more docs
 submodule (mod_solvers) smod_inverse_iteration
-  use mod_global_variables, only: dim_subblock, maxiter, tolerance, sigma
   use mod_check_values, only: is_equal
   use mod_banded_matrix, only: banded_matrix_t, new_banded_matrix
   use mod_banded_matrix_hermitian, only: hermitian_banded_matrix_t
@@ -46,33 +45,36 @@ contains
     real(dp)                      :: dznrm2
     complex(dp)                   :: zdotc
     integer                       :: idamax
+    integer :: maxiter
+    complex(dp) :: sigma
+
+    maxiter = settings%solvers%maxiter
+    sigma = settings%solvers%sigma
 
     ! check input sanity
     if (.not. (matrix_A%matrix_dim == matrix_B%matrix_dim)) then
-      call log_message("A or B not square, or not compatible", level="error")
+      call logger%error("A or B not square, or not compatible")
+      return
     end if
 
     ! if maxiter is not set in the parfile it's still 0, default to 100
     if (maxiter == 0) then
       maxiter = 100
     else if (maxiter < 0) then
-      call log_message( &
-        "maxiter has to be positive, but is equal to " // str(maxiter), level="error" &
+      call logger%error( &
+        "maxiter has to be positive, but is equal to " // str(maxiter) &
       )
       return
     end if
 
     if (is_equal(sigma, (0.0d0, 0.0d0))) then
-      call log_message( &
-        "inverse-iteration: sigma can not be equal to zero", &
-        level="error" &
-      )
+      call logger%error("inverse-iteration: sigma can not be equal to zero")
       return
     end if ! LCOV_EXCL_STOP
 
     ! set array dimensions
     N = matrix_A%matrix_dim
-    kd = 2*dim_subblock+1 ! at most 2 subblocks away from diag
+    kd = 2 * settings%dims%get_dim_subblock() + 1 ! at most 2 subblocks away from diag
 
     ! allocate iteration vectors
     allocate(x(N))
@@ -99,14 +101,13 @@ contains
     allocate(LU_ipiv(N))
     call zgbtrf(N, N, kd, kd, LU%AB, LU%kl+LU%ku+1, LU_ipiv, info)
     if (info /= 0) then ! LCOV_EXCL_START
-      call log_message( &
-        "[A - sigma * B](" // str(info) // "," // str(info) // ") is zero", &
-        level="warning" &
+      call logger%warning( &
+        "[A - sigma * B](" // str(info) // "," // str(info) // ") is zero" &
       )
     end if ! LCOV_EXCL_STOP
 
     ! start iteration
-    tol = tolerance
+    tol = settings%solvers%tolerance
     i = 0
     ev = sigma
     ! use solution of U x = 1 as initial guess
@@ -169,26 +170,15 @@ contains
       call zdscal(N, 1.0_dp / dznrm2(N, x, 1), x, 1)
     end do
 
+    call logger%info("Iteration completed after " // str(i) // " iterations.")
     ! if we did not converge, raise a warning
     if (.not.converged) then
       if (i == maxiter+1) then
-        call log_message( &
-          "Inverse iteration failed to converge! (maxiter reached)", level="warning" &
-        )
-        call log_message( &
-          "number of iterations: " // str(maxiter), &
-          level="warning", &
-          use_prefix=.false. &
-        )
+        call logger%warning("Inverse iteration failed to converge! (maxiter reached)")
+        call logger%warning("number of iterations: " // str(maxiter))
       else
-        call log_message( &
-          "Inverse iteration failed to converge! (divergence)", level="warning" &
-        )
-        call log_message( &
-          "number of iterations: " // str(i), &
-          level="warning", &
-          use_prefix=.false. &
-        )
+        call logger%warning("Inverse iteration failed to converge! (divergence)")
+        call logger%warning("number of iterations: " // str(i))
       end if
     end if
 
@@ -196,7 +186,7 @@ contains
     omega = ev
 
     ! write eigenvector if requested
-    if (should_compute_eigenvectors()) then
+    if (settings%io%should_compute_eigenvectors()) then
       ! make largest coefficient real
       i = idamax(N, abs(x), 1)
       call zscal(N, conjg(x(i))/abs(x(i)), x, 1)

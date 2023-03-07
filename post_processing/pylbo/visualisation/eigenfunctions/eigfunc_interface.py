@@ -1,11 +1,39 @@
+from __future__ import annotations
+
 import abc
-import numpy as np
-import matplotlib.pyplot as plt
+
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.collections import PathCollection
-from pylbo.data_containers import LegolasDataSet, LegolasDataSeries
-from pylbo.utilities.toolbox import add_pickradius_to_item, count_zeroes, calculate_wcom
+from pylbo.data_containers import LegolasDataSeries, LegolasDataSet
 from pylbo.utilities.logger import pylboLogger
+from pylbo.utilities.toolbox import add_pickradius_to_item, count_zeroes, calculate_wcom
+
+
+def get_artist_data(artist: plt.Artist) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Returns the (x, y) coordinates of a given artist.
+
+    Parameters
+    ----------
+    artist : ~matplotlib.artist.Artist
+        The artist to get the data from.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        The (x, y) coordinates of the artist.
+    """
+    if isinstance(artist, PathCollection):
+        # this block is entered for points drawn using scatter instead of plot
+        xdata, ydata = np.split(artist.get_offsets(), [-1], axis=1)
+        xdata = xdata.squeeze(axis=1)
+        ydata = ydata.squeeze(axis=1)
+    else:
+        xdata = artist.get_xdata()
+        ydata = artist.get_ydata()
+    return xdata, ydata
 
 
 class EigenfunctionInterface:
@@ -117,6 +145,47 @@ class EigenfunctionInterface:
             idxs = np.array([int(idx) for idx in points.keys()])
             print(f"{ds.datfile.stem} | {ds.eigenvalues[idxs]}")
 
+    def _save_eigenvalue_selection(self):
+        """
+        Saves all selected eigenvalues and their eigenfunctions as a list of
+        dictionaries in a .npy file. Files can be loaded with the numpy load function.
+        """
+        if not self._selected_idxs:
+            return
+        count = 1
+        for ds in self._selected_idxs:
+            print(f"Saving selected eigenvalues for dataset {count}...")
+            to_store = [ds.ef_grid]
+            for point in self._selected_idxs[ds]:
+                point_to_store = ds.get_eigenfunctions(ev_idxs=int(point))[0]
+                to_store.append(point_to_store)
+            filename = ds.datfile.name
+            filename = filename.replace(".dat", "")
+            np.save(filename, to_store)
+            print(f"{len(to_store)-1} mode(s) saved to " + filename + ".npy")
+            count += 1
+
+    def _save_selection_indices(self):
+        """
+        Saves the indices of all selected eigenvalues as an array in a .npy file.
+        Files can be loaded with the numpy load function.
+        """
+        if not self._selected_idxs:
+            return
+        count = 1
+        for ds in self._selected_idxs:
+            print(f"Saving indices of selected eigenvalues for dataset {count}...")
+            to_store = []
+            for point in self._selected_idxs[ds]:
+                to_store.append(int(point))
+            filename = ds.datfile.name
+            filename = filename.replace(".dat", "")
+            np.save(filename, to_store)
+            print(
+                f"{len(self._selected_idxs[ds])} indices saved to " + filename + ".npy"
+            )
+            count += 1
+
     def _print_wcom(self):
         """
         Prints all selected eigenvalues and their complementary energy to the console.
@@ -175,7 +244,7 @@ class EigenfunctionInterface:
         """
         label = rf"$\omega_{{{ev_idx}}}$ = {w:2.3e}"
         if isinstance(self.data, LegolasDataSeries):
-            label = f"{ds.datfile.stem} | {label}"
+            label = f"{ds.datfile.stem} | {label}"
         return label
 
     @abc.abstractmethod
@@ -242,6 +311,10 @@ class EigenfunctionInterface:
             self._retransform_functions()
         elif event.key == "w":
             self._print_selected_eigenvalues()
+        elif event.key == "a":
+            self._save_eigenvalue_selection()
+        elif event.key == "j":
+            self._save_selection_indices()
         elif event.key == "n":
             self._print_nzeroes()
         elif event.key == "ctrl+c":
@@ -325,14 +398,8 @@ class EigenfunctionInterface:
         """
         artist = event.artist
         idxs = event.ind
-        if isinstance(artist, PathCollection):
-            # this block is entered for points drawn using scatter instead of plot
-            xdata, ydata = np.split(artist.get_offsets(), [-1], axis=1)
-            xdata = xdata.squeeze()
-            ydata = ydata.squeeze()
-        else:
-            xdata = artist.get_xdata()
-            ydata = artist.get_ydata()
+        xdata, ydata = get_artist_data(artist)
+
         # In case of overlap between clicked points then multiple
         # indices were selected, so we check smallest distance to mouse click
         if len(idxs) == 1:
@@ -372,17 +439,17 @@ class EigenfunctionInterface:
     def _toggle_eigenfunction_subset_radius(self):
         if not isinstance(self.data, LegolasDataSet):
             return
-        if all(self.data.header["ef_written_flags"]):
+        if not self.data.has_ef_subset:
             return
         xlim = self.spec_axis.get_xlim()
         ylim = self.spec_axis.get_ylim()
         if self._ef_subset_artists is None:
-            center = self.data.header["eigenfunction_subset_center"]
+            center = self.data.header["ef_subset_center"]
             (subset_center,) = self.spec_axis.plot(
                 np.real(center), np.imag(center), ".r", markersize=8, alpha=0.8
             )
             subset_center.set_visible(False)
-            radius = self.data.header["eigenfunction_subset_radius"]
+            radius = self.data.header["ef_subset_radius"]
             circle = plt.Circle(
                 (np.real(center), np.imag(center)),
                 radius,
@@ -433,6 +500,8 @@ class EigenfunctionInterface:
             [r"$\mathbf{t}$", r"cylindrical: toggle $v_r \leftrightarrow r v_r$"],
             [r"$\mathbf{w}$", r"print selected $\omega$ to console"],
             [r"$\mathbf{e}$", r"subset: toggle center and radius"],
+            [r"$\mathbf{a}$", r"save eigenvalue selection"],
+            [r"$\mathbf{j}$", r"save selection indices"],
         ]
         bbox = np.array([0.1, 0.3, 0.8, 0.4])
         rectangle = patches.Rectangle(
