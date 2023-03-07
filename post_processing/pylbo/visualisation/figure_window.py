@@ -67,7 +67,7 @@ class FigureWindow:
             The axes on which to draw.
         """
         if figsize is None:
-            figsize = (12, 8)
+            figsize = (12, 7)
         fig = plt.figure(self._generate_figure_id(figlabel), figsize=figsize)
         ax = fig.add_subplot(111)
         return fig, ax
