@@ -2,8 +2,9 @@
 !! All variables that are used in different solver settings are defined, initialised
 !! and set in this module.
 module mod_arpack_type
-  use mod_logging, only: log_message, str
+  use mod_logging, only: logger, str
   use mod_global_variables, only: dp
+  use mod_solver_settings, only: solvers_t
   implicit none
 
   !> General type containing the ARPACK configuration.
@@ -44,6 +45,7 @@ module mod_arpack_type
     procedure, public :: get_nev
     procedure, public :: get_tolerance
     procedure, public :: get_ncv
+    procedure, public :: get_maxiter
     procedure, public :: get_lworkl
     procedure, public :: parse_znaupd_info
     procedure, public :: parse_zneupd_info
@@ -69,40 +71,32 @@ contains
   !> Constructor for a new ARPACK configuration based on the dimension of the eigenvalue
   !! problem, mode of the solver and type of the B-matrix. Initialises required
   !! variables and allocates work arrays to be used when calling the solvers.
-  function new_arpack_config( &
-    evpdim, mode, bmat, which, nev, tolerance, maxiter, ncv &
-  ) result(arpack_config)
+  function new_arpack_config(evpdim, mode, bmat, solver_settings) result(arpack_config)
     !> dimension of the eigenvalue problem
     integer, intent(in) :: evpdim
     !> mode for the solver
     integer, intent(in) :: mode
     !> type of the matrix B
     character(len=1), intent(in) :: bmat
-    !> which eigenvalues to calculate
-    character(len=2), intent(in) :: which
-    !> number of eigenvalues to calculate
-    integer, intent(in) :: nev
-    !> relative accuracy (stopping criteria) for eigenvalues
-    real(dp), intent(in) :: tolerance
-    !> maximum number of iterations, defaults to 10*evpdim
-    integer, intent(in) :: maxiter
-    !> number of Arnoldi basis vectors
-    integer, intent(in) :: ncv
+    type(solvers_t), intent(inout) :: solver_settings
     !> initialised arpack configuration
     type(arpack_t) :: arpack_config
 
-    call log_message("configuring Arnoldi parameters", level="debug")
+    call logger%debug("configuring Arnoldi parameters")
     arpack_config%evpdim = evpdim
     call arpack_config%set_mode(mode)
 
     arpack_config%ido = 0  ! 0 means first call to reverse communication interface
     call arpack_config%set_bmat(bmat)
-    call arpack_config%set_which(which)
-    call arpack_config%set_nev(nev)
-    arpack_config%tolerance = tolerance
+    call arpack_config%set_which(solver_settings%which_eigenvalues)
+    call arpack_config%set_nev(solver_settings%number_of_eigenvalues)
+    arpack_config%tolerance = solver_settings%tolerance
     call arpack_config%set_residual(evpdim)
-    call arpack_config%set_ncv(ncv)
-    call arpack_config%set_maxiter(maxiter)
+    ! if not user-set they are calculated and settings should be updated
+    call arpack_config%set_ncv(solver_settings%ncv)
+    call arpack_config%set_maxiter(solver_settings%maxiter)
+    solver_settings%maxiter = arpack_config%get_maxiter()
+    solver_settings%ncv = arpack_config%get_ncv()
     ! iparam(1) = ishift = 1 means restart with shifts from Hessenberg matrix
     arpack_config%iparam(1) = 1
   end function new_arpack_config
@@ -117,15 +111,14 @@ contains
     integer, parameter :: allowed_modes(3) = [1, 2, 3]
 
     if (.not. any(mode == allowed_modes)) then
-      call log_message( &
-        "Arnoldi: mode = " // str(mode) // " is invalid, expected 1, 2 or 3", &
-        level="error" &
+      call logger%error( &
+        "Arnoldi: mode = " // str(mode) // " is invalid, expected 1, 2 or 3" &
       )
       return
     end if
     this%mode = mode
     this%iparam(7) = this%mode
-    call log_message("Arnoldi: mode set to " // str(this%mode), level="debug")
+    call logger%debug("Arnoldi: mode set to " // str(this%mode))
   end subroutine set_mode
 
 
@@ -138,14 +131,13 @@ contains
     character :: allowed_bmats(2) = ["I", "G"]
 
     if (.not. any(bmat == allowed_bmats)) then
-      call log_message( &
-        "Arnoldi: bmat = " // bmat // " is invalid, expected 'I' or 'G'", &
-        level="error" &
+      call logger%error( &
+        "Arnoldi: bmat = " // bmat // " is invalid, expected 'I' or 'G'" &
       )
       return
     end if
     this%bmat = bmat
-    call log_message("Arnoldi: bmat set to " // this%bmat, level="debug")
+    call logger%debug("Arnoldi: bmat set to " // this%bmat)
   end subroutine set_bmat
 
 
@@ -158,15 +150,14 @@ contains
     character(2) :: allowed_which(6) = ["LM", "SM", "LR", "SR", "LI", "SI"]
 
     if (.not. any(which == allowed_which)) then
-      call log_message( &
+      call logger%error( &
         "Arnoldi: which_eigenvalues = " // which &
-        // " is invalid, expected one of " // str(allowed_which), &
-        level="error" &
+        // " is invalid, expected one of " // str(allowed_which) &
       )
       return
     end if
     this%which = which
-    call log_message("Arnoldi: which set to " // this%which, level="debug")
+    call logger%debug("Arnoldi: which set to " // this%which)
   end subroutine set_which
 
 
@@ -178,22 +169,20 @@ contains
     integer, intent(in) :: nev
 
     if (nev <= 0) then
-      call log_message( &
-        "Arnoldi: number of eigenvalues must be >= 0 but got " // str(nev), &
-        level="error" &
+      call logger%error( &
+        "Arnoldi: number of eigenvalues must be >= 0 but got " // str(nev) &
       )
       return
     end if
     if (nev >= this%evpdim) then
-      call log_message( &
+      call logger%error( &
         "Arnoldi: number of eigenvalues (" // str(nev) &
-        // ") >= " // "matrix size (" // str(this%evpdim) // ")", &
-        level="error" &
+        // ") >= " // "matrix size (" // str(this%evpdim) // ")" &
       )
       return
     end if
     this%nev = nev
-    call log_message("Arnoldi: nev set to " // str(this%nev), level="debug")
+    call logger%debug("Arnoldi: nev set to " // str(this%nev))
   end subroutine set_nev
 
 
@@ -235,22 +224,20 @@ contains
       this%ncv = ncv
     end if
     if (1 > this%ncv - this%get_nev()) then
-      call log_message( &
+      call logger%error( &
         "ncv too low, expected ncv - nev >= 1 but got ncv - nev = " &
-        // str(this%ncv - this%get_nev()), &
-        level="error" &
+        // str(this%ncv - this%get_nev()) &
       )
       return
     end if
     if (this%ncv > this%get_evpdim()) then
-      call log_message( &
+      call logger%error( &
         "ncv too high, expected ncv < N but got ncv = " // str(this%ncv) &
-        // " and N = " // str(this%get_evpdim()), &
-        level="error" &
+        // " and N = " // str(this%get_evpdim()) &
       )
       return
     end if
-    call log_message("Arnoldi: ncv set to " // str(this%ncv), level="debug")
+    call logger%debug("Arnoldi: ncv set to " // str(this%ncv))
   end subroutine set_ncv
 
 
@@ -266,9 +253,8 @@ contains
 
     min_maxiter = max(100, 10 * this%get_nev())
     if (maxiter < 0) then
-      call log_message( &
-        "Arnoldi: maxiter must be positive, but is equal to " // str(maxiter), &
-        level="error" &
+      call logger%error( &
+        "Arnoldi: maxiter must be positive, but is equal to " // str(maxiter) &
       )
       return
     end if
@@ -278,10 +264,9 @@ contains
       this%maxiter = maxiter
     end if
     if (this%maxiter < min_maxiter) then ! LCOV_EXCL_START
-      call log_message( &
+      call logger%warning( &
         "Arnoldi: maxiter (" // str(maxiter) // ") below recommended max(100, 10*k) (" &
-        // str(min_maxiter) // ")", &
-        level="warning" &
+        // str(min_maxiter) // ")" &
       )
     end if ! LCOV_EXCL_STOP
     this%iparam(3) = this%maxiter
@@ -342,6 +327,14 @@ contains
   end function get_ncv
 
 
+  !> Getter for maximum number of iterations.
+  pure integer function get_maxiter(this)
+    !> type instance
+    class(arpack_t), intent(in) :: this
+    get_maxiter = this%maxiter
+  end function get_maxiter
+
+
   !> Getter for length of workl array, returns 3 * ncv**2 + 5 * ncv
   pure integer function get_lworkl(this)
     !> type instance
@@ -358,7 +351,7 @@ contains
     !> type instance
     class(arpack_t), intent(inout) :: this
 
-    deallocate(this%residual)
+    if (allocated(this%residual)) deallocate(this%residual)
   end subroutine destroy
 
 
@@ -372,44 +365,41 @@ contains
     !> if .true. the reverse communication routines converged, .false. otherwise
     logical, intent(out)  :: converged
 
-    call log_message("checking znaupd info parameter", level="debug")
+    call logger%debug("checking znaupd info parameter")
     converged = .false.
     select case(this % info)
     case(0)
       converged = .true.
     case(1) ! LCOV_EXCL_START
-      call log_message("ARPACK failed to converge! (maxiter reached)", level="warning")
-      call log_message("number of iterations: " // str(this % maxiter), level="warning")
-      call log_message( &
+      call logger%warning("ARPACK failed to converge! (maxiter reached)")
+      call logger%warning("number of iterations: " // str(this % maxiter))
+      call logger%warning( &
         "number of converged eigenvalues: " // str(this % iparam(5)) // &
-        " / " // str(this % nev), &
-        level="warning" &
+        " / " // str(this % nev) &
       )
     case(3)
-      call log_message( &
+      call logger%error( &
         "znaupd: no shifts could be applied during a cycle of the Arnoldi iteration." &
-        // " Try increasing the size of ncv relative to number_of_eigenvalues.", &
-        level="error" &
+        // " Try increasing the size of ncv relative to number_of_eigenvalues." &
       )
       return
     case(-6)
-      call log_message("znaupd: bmat must be 'I' or 'G'", level="error")
+      call logger%error("znaupd: bmat must be 'I' or 'G'")
     case(-8)
-      call log_message("znaupd: error LAPACK eigenvalue calculation", level="error")
+      call logger%error("znaupd: error LAPACK eigenvalue calculation")
       return
     case(-9)
-      call log_message("znaupd: starting vector is zero, try rerunning?", level="error")
+      call logger%error("znaupd: starting vector is zero, try rerunning?")
       return
     case(-11)
-      call log_message("mode = 1 and bmat = 'G' are incompatible", level="error")
+      call logger%error("mode = 1 and bmat = 'G' are incompatible")
       return
     case(-9999)
-      call log_message("ARPACK could not build, something went wrong", level="error")
+      call logger%error("ARPACK could not build, something went wrong")
       return
     case default
-      call log_message( &
-        "znaupd: unexpected info = " // str(this % info) // " encountered", &
-        level="error" &
+      call logger%error( &
+        "znaupd: unexpected info = " // str(this % info) // " encountered" &
       )
       return ! LCOV_EXCL_STOP
     end select
@@ -423,35 +413,25 @@ contains
     !> reference to type object
     class(arpack_t), intent(in)  :: this
 
-    call log_message("checking zneupd info parameter", level="debug")
+    call logger%debug("checking zneupd info parameter")
 
     select case(this % info)
     case(0)
       return
     case(-8) ! LCOV_EXCL_START
-      call log_message( &
-        "zneupd: error from LAPACK eigenvalue calculation", level="error" &
-      )
+      call logger%error("zneupd: error from LAPACK eigenvalue calculation")
       return
     case(-9)
-      call log_message( &
-        "zneupd: error from LAPACK eigenvector calculation (ztrevc)", level="error" &
-      )
+      call logger%error("zneupd: error from LAPACK eigenvector calculation (ztrevc)")
       return
     case(-14)
-      call log_message( &
-        "zneupd: no eigenvalues with sufficient accuracy found", level="error" &
-      )
+      call logger%error("zneupd: no eigenvalues with sufficient accuracy found")
       return
     case(-15)
-      call log_message( &
-        "zneupd: different count for converged eigenvalues than znaupd", level="error" &
-      )
+      call logger%error("zneupd: different count for converged eigenvalues than znaupd")
       return
     case default
-      call log_message( &
-        "zneupd: unexpected info = " // str(this % info) // " value", level="error" &
-      )
+      call logger%error("zneupd: unexpected info = " // str(this % info) // " value")
       return ! LCOV_EXCL_STOP
     end select
   end subroutine parse_zneupd_info
@@ -464,21 +444,13 @@ contains
     !> type instance
     class(arpack_t), intent(in) :: this
 
-    call log_message("Arnoldi iteration finished. Statistics: ", level="info")
-    call log_message( &
-      "   Total number of OP*x operations: " // str(this%iparam(9)), &
-      level="info", &
-      use_prefix=.false. &
+    call logger%info("Arnoldi iteration finished. Statistics: ")
+    call logger%disable_prefix()
+    call logger%info("  Total number of OP*x operations: " // str(this%iparam(9)))
+    call logger%info("  Total number of B*x operations: " // str(this%iparam(10)))
+    call logger%info( &
+      "  Total number of re-orthogonalisation steps: " // str(this%iparam(11)) &
     )
-    call log_message( &
-      "   Total number of B*x operations: " // str(this%iparam(10)), &
-      level="info", &
-      use_prefix=.false. &
-    )
-    call log_message( &
-      "   Total number of re-orthogonalisation steps: " // str(this%iparam(11)), &
-      level="info", &
-      use_prefix=.false. &
-    )
+    call logger%enable_prefix()
   end subroutine parse_finished_stats
 end module mod_arpack_type

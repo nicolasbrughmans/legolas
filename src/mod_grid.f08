@@ -9,8 +9,9 @@
 !! four nodes \(j\) as
 !! $$ x_i(j) = 0.5 * dx * w_i(j) + 0.5(a + b) $$
 module mod_grid
-  use mod_global_variables, only: dp, gridpts
-  use mod_logging, only: log_message, str
+  use mod_global_variables, only: dp
+  use mod_logging, only: logger, str
+  use mod_settings, only: settings_t
   implicit none
 
   private
@@ -48,19 +49,26 @@ contains
   !!            all kinds of other issues (huge values, division by zero, etc). @endwarning
   !! @warning   Throws an error if the geometry is not set. @endwarning
   !! @warning   Throws a warning if <tt>r = 0</tt> is forced in cylindrical geometry.
-  subroutine initialise_grid(custom_grid)
-    use mod_global_variables, only: geometry, x_start, x_end, &
-      gauss_gridpts, dp_LIMIT, force_r0
+  subroutine initialise_grid(settings, custom_grid)
+    use mod_global_variables, only: dp_LIMIT
 
+    type(settings_t), intent(inout) :: settings
     !> custom grid to use instead of the default one, optional
     real(dp), intent(in), optional  :: custom_grid(:)
-    integer   :: i
-    real(dp)  :: dx
+    character(:), allocatable :: geometry
+    integer   :: i, gridpts, gauss_gridpts
+    real(dp)  :: dx, x_start, x_end
 
+    geometry = settings%grid%get_geometry()
     if (geometry == "") then
-      call log_message("geometry must be set in submodule/parfile", level="error")
+      call logger%error("geometry must be set in submodule/parfile")
       return
     end if
+
+    gridpts = settings%grid%get_gridpts()
+    gauss_gridpts = settings%grid%get_gauss_gridpts()
+    x_start = settings%grid%get_grid_start()
+    x_end = settings%grid%get_grid_end()
 
     allocate(grid(gridpts))
     allocate(grid_gauss(gauss_gridpts))
@@ -71,24 +79,22 @@ contains
     grid_gauss = 0.0d0
 
     if (present(custom_grid)) then
-      call log_message("using a custom base grid", level="info")
+      call logger%info("using a custom base grid")
       ! check if size matches gridpoints
       if (size(custom_grid) /= gridpts) then
-        call log_message( &
+        call logger%error( &
           "custom grid: sizes do not match! Expected "// str(gridpts) // &
-          " points but got " // str(size(custom_grid)), &
-          level="error" &
+          " points but got " // str(size(custom_grid)) &
         )
         return
       end if
       ! check if grid is monotonous
       do i = 1, size(custom_grid) - 1
         if (.not. (custom_grid(i + 1) > custom_grid(i))) then
-          call log_message( &
+          call logger%error( &
             "custom grid: supplied array is not monotone! Got x=" // &
             str(custom_grid(i)) // " at index " // str(i) // " and x=" // &
-            str(custom_grid(i + 1)) // " at index " // str(i + 1), &
-            level="error" &
+            str(custom_grid(i + 1)) // " at index " // str(i + 1) &
           )
           return
         end if
@@ -96,16 +102,16 @@ contains
       grid = custom_grid
     else
       if (geometry == "cylindrical" .and. abs(x_start) < dp_LIMIT) then
-        if (.not. force_r0) then
+        if (.not. settings%grid%force_r0) then
           x_start = 2.5d-2
         else
-          call log_message( &
+          call logger%warning( &
             "forcing on-axis r in cylindrical geometry. This may lead to spurious &
-            &real/imaginary eigenvalues.", &
-            level="warning" &
+            &real/imaginary eigenvalues." &
           )
           x_start = 0.0d0
         end if
+        call settings%grid%set_grid_boundaries(x_start, x_end)
       end if
 
       ! minus one here to include x_end
@@ -115,17 +121,18 @@ contains
       end do
     end if
 
-    call set_grid_gauss()
-    call set_scale_factor()
+    call set_grid_gauss(gridpts)
+    call set_scale_factor(geometry)
   end subroutine initialise_grid
 
 
   !> Sets up grid_gauss, that is, the grid evaluated in the four
   !! Gaussian points. This is done by evaluating the weights
   !! at the four Gaussian nodes.
-  subroutine set_grid_gauss()
+  subroutine set_grid_gauss(gridpts)
     use mod_global_variables, only: gaussian_nodes, n_gauss
 
+    integer, intent(in) :: gridpts
     real(dp)              :: x_lo, x_hi, dx, xi(n_gauss)
     integer               :: i, j, idx
 
@@ -149,8 +156,8 @@ contains
   !! is simply equal to the Gaussian grid, and its derivative is unity.
   !! For Cartesian the scale factor is unity and its derivative is zero.
   !! @warning   Throws an error if the geometry is not defined correctly.
-  subroutine set_scale_factor()
-    use mod_global_variables, only: geometry
+  subroutine set_scale_factor(geometry)
+    character(len=*), intent(in) :: geometry
 
     if (geometry == 'Cartesian') then
       eps_grid = 1.0d0
@@ -159,9 +166,7 @@ contains
       eps_grid = grid_gauss
       d_eps_grid_dr = 1.0d0
     else
-      call log_message( &
-        "geometry not defined correctly: " // trim(geometry), level="error" &
-      )
+      call logger%error("geometry not defined correctly: " // trim(geometry))
     end if
   end subroutine set_scale_factor
 

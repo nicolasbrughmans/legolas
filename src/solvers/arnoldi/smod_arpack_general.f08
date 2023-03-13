@@ -37,17 +37,17 @@ contains
     ! IDEA: maybe do a pass over the B-matrix first to figure out how many diagonals
     ! we need? This is problem-dependent so in some cases there might be quite some
     ! room here for optimisations
-    diags = dim_quadblock - 1
-    call log_message("converting A-matrix into banded structure", level="debug")
+    diags = settings%dims%get_dim_quadblock() - 1
+    call logger%debug("converting A-matrix into banded structure")
     call matrix_to_banded( &
       matrix=matrix_A, subdiags=diags, superdiags=diags, banded=amat_banded &
     )
-    call log_message("converting B-matrix into banded structure", level="debug")
+    call logger%debug("converting B-matrix into banded structure")
     call matrix_to_banded( &
       matrix=matrix_B, subdiags=diags, superdiags=diags, banded=bmat_banded &
     )
 
-    call log_message("doing Arnoldi iteration", level="debug")
+    call logger%debug("doing Arnoldi iteration")
     converged = .false.
     ! we keep iterating for as long as the eigenvalues are not converged.
     ! If convergence is achieved or the maximum number of iterations is reached,

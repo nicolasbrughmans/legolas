@@ -9,7 +9,7 @@ from matplotlib.figure import Figure
 from pylbo.utilities.logger import pylboLogger
 from pylbo.visualisation.figure_window import FigureWindow
 from pylbo.visualisation.modes.mode_data import ModeVisualisationData
-from pylbo.visualisation.utils import add_axis_label
+from pylbo.visualisation.utils import add_axis_label, ensure_attr_set
 
 
 class ModeFigure(FigureWindow):
@@ -61,13 +61,20 @@ class ModeFigure(FigureWindow):
         self.cbar = None
         self._cbar_hspace = 0.01
         self._show_ef_panel = show_ef_panel
+        self._annotate = True
 
         if figsize is None:
             figsize = (14, 8)
-        fig, axes = self._create_figure_layout(figsize)
+        if self._kwargs.get("custom_figure", None) is not None:
+            pylboLogger.info("using user-defined figure and axes")
+            fig, ax = self._kwargs.pop("custom_figure")
+            axes = {"view": ax}
+            self._show_ef_panel = False
+        else:
+            fig, axes = self._create_figure_layout(figsize)
         super().__init__(fig)
         self.axes = axes
-        self.cbar_ax = self._create_cbar_axes()
+        self.cbar_ax = self._create_cbar_axes(width=0.02)
 
         # Main data object
         self.data = data
@@ -80,12 +87,12 @@ class ModeFigure(FigureWindow):
         self.ef_data = []
         self.solution_shape = None
 
-        [self._ensure_attr_set(attr) for attr in ("_u1", "_u2", "_u3", "_time")]
+        [ensure_attr_set(self, attr) for attr in ("_u1", "_u2", "_u3", "_time")]
 
         self.set_plot_arrays()
         for attr in ("u1", "u2", "u3", "time"):
-            self._ensure_attr_set(f"{attr}_data")
-        self._ensure_attr_set("solution_shape")
+            ensure_attr_set(self, f"{attr}_data")
+        ensure_attr_set(self, "solution_shape")
 
         # don't explicitly create an empty array as this may return a broadcasted view
         self._solutions = 0
@@ -100,23 +107,6 @@ class ModeFigure(FigureWindow):
             self._solutions += self.data.get_background(self._solutions.shape)
 
         pylboLogger.info(f"eigenmode solution shape {self._solutions.shape}")
-
-    def _ensure_attr_set(self, attr: str) -> None:
-        """
-        Ensures that a given attribute is set.
-
-        Parameters
-        ----------
-        attr : str
-            The attribute to check.
-
-        Raises
-        ------
-        ValueError
-            If the attribute is not set.
-        """
-        if getattr(self, attr, None) is None:
-            raise AttributeError(f"attribute '{attr}' not set for {type(self)}")
 
     def _check_if_number(self, val: float, attr_name: str) -> float:
         """
@@ -223,7 +213,8 @@ class ModeFigure(FigureWindow):
     def draw(self) -> None:
         self.draw_eigenfunction()
         self.draw_solution()
-        self.draw_textboxes()
+        if self._annotate:
+            self.draw_textboxes()
         self.add_axes_labels()
         super().draw()
 
@@ -255,16 +246,26 @@ class ModeFigure(FigureWindow):
         self.ax.set_ylabel(self.get_view_ylabel())
         self.cbar.set_label(self.get_view_cbar_label())
 
-    def _create_cbar_axes(self) -> Axes:
+    def _create_cbar_axes(self, width: float) -> Axes:
         """
+        Creates the axes for the colorbar.
+
+        Parameters
+        ----------
+        width : float
+            The width of the colorbar axes.
         Returns
         -------
         matplotlib.axes.Axes
             The axes for the colorbar.
         """
         box = self.ax.get_position()
-        position = (box.x0 + box.width + self._cbar_hspace, box.y0)
-        dims = (0.02, box.height)
+        # shift main axes to the left to make space
+        self.ax.set_position([box.x0, box.y0, box.width - 2.5 * width, box.height])
+        # update box to reflect the new position
+        box = self.ax.get_position()
+        position = (box.x0 + box.width, box.y0)
+        dims = (width, box.height)
         return self.fig.add_axes([*position, *dims])
 
     def get_view_xlabel(self) -> str:
@@ -287,9 +288,9 @@ class ModeFigure(FigureWindow):
         **kwargs
             Additional keyword arguments to pass to :meth:`add_axis_label`.
         """
-        self.omega_txt = add_axis_label(
-            ax, rf"$\omega$ = {self.data.omega:.5f}", **kwargs
-        )
+        if self.omega_txt is None:
+            self.omega_txt = rf"$\omega$ = {self.data.omega:.5f}"
+        add_axis_label(ax, self.omega_txt, **kwargs)
 
     def add_k2k3_txt(self, ax, **kwargs) -> None:
         """
@@ -302,12 +303,14 @@ class ModeFigure(FigureWindow):
         **kwargs
             Additional keyword arguments to pass to :meth:`add_axis_label`.
         """
-        self.k2k3_txt = add_axis_label(
-            ax,
-            f"{self.data.ds.k2_str} = {self.data.k2} | "
-            f"{self.data.ds.k3_str} = {self.data.k3}",
-            **kwargs,
-        )
+        if self.k2k3_txt is None:
+            self.k2k3_txt = "".join(
+                [
+                    f"{self.data.ds.k2_str} = {self.data.k2} | ",
+                    f"{self.data.ds.k3_str} = {self.data.k3}",
+                ]
+            )
+        add_axis_label(ax, self.k2k3_txt, **kwargs)
 
     def add_u2u3_txt(self, ax, **kwargs) -> None:
         """
@@ -321,11 +324,14 @@ class ModeFigure(FigureWindow):
         **kwargs
             Additional keyword arguments to pass to :meth:`add_axis_label`.
         """
-        self.u2u3_txt = add_axis_label(
-            ax,
-            rf"{self.data.ds.u2_str} = {self._u2} | {self.data.ds.u3_str} = {self._u3}",
-            **kwargs,
-        )
+        if self.u2u3_txt is None:
+            self.u2u3_txt = "".join(
+                [
+                    rf"{self.data.ds.u2_str} = {self._u2} | ",
+                    rf"{self.data.ds.u3_str} = {self._u3}",
+                ]
+            )
+        add_axis_label(ax, self.u2u3_txt, **kwargs)
 
     def add_t_txt(self, ax, **kwargs) -> None:
         pass
