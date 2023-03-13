@@ -6,7 +6,6 @@
 !! Eventually a call to LAPACK's <tt>zgeev</tt> routine is done to obtain
 !! all eigenvalues and eigenvectors.
 submodule (mod_solvers) smod_qr_invert
-  use mod_global_variables, only: dim_quadblock
   use mod_banded_matrix, only: banded_matrix_t, new_banded_matrix
   use mod_transform_matrix, only: matrix_to_banded
   implicit none
@@ -45,12 +44,11 @@ contains
     integer :: irow, icol
 
     call matrix_B%get_nb_diagonals(ku=ku, kl=kl)
-    call log_message( &
-      "B has " // str(ku) // " superdiagonals and " // str(kl) // " subdiagonals", &
-      level="debug" &
+    call logger%debug( &
+      "B has " // str(ku) // " superdiagonals and " // str(kl) // " subdiagonals" &
     )
     N = matrix_B%matrix_dim
-    call log_message("converting B to banded form", level="debug")
+    call logger%debug("converting B to banded form")
     ! for zgbsv later on we need double the amount of subdiagonals
     B_band = new_banded_matrix(rows=N, cols=N, subdiags=2*kl, superdiags=ku)
     ! fill banded matrix, see documentation: "The j-th column of B is stored in the
@@ -63,12 +61,12 @@ contains
     end do
 
     allocate(array_B_invA(matrix_A%matrix_dim, matrix_A%matrix_dim))
-    call log_message("converting A to dense form", level="debug")
+    call logger%debug("converting A to dense form")
     call matrix_to_array(matrix=matrix_A, array=array_B_invA)
 
     ! zgbsv calculates X from BX = A, where B is a banded matrix.
     ! solving this system yields X = B^{-1}A without explicitly inverting
-    call log_message("calling LAPACK's zgbsv", level="debug")
+    call logger%debug("calling LAPACK's zgbsv")
     call zgbsv( &
       B_band%m, &
       kl, &
@@ -82,18 +80,18 @@ contains
       info &
     )
     if (info /= 0) then
-      call log_message("LAPACK's zgbsv failed with info = " // str(info), level="error")
+      call logger%error("LAPACK's zgbsv failed with info = " // str(info))
       return
     end if
     call B_band%destroy()
 
     ! calculate eigenvectors, we don't use the left ones
     jobvr = "N"
-    if (should_compute_eigenvectors()) jobvr = "V"
+    if (settings%io%should_compute_eigenvectors()) jobvr = "V"
     ! allocate rwork array
     allocate(rwork(2 * N))
     ! get lwork
-    call log_message("calculating optimal length of work array", level="debug")
+    call logger%debug("calculating optimal length of work array")
     allocate(work(1))
     call zgeev( &
       "N", &
@@ -114,11 +112,11 @@ contains
     lwork = int(work(1))
     deallocate(work)
     ! allocate work array
-    call log_message("allocating work array with N = " // str(lwork), level="debug")
+    call logger%debug("allocating work array with N = " // str(lwork))
     allocate(work(lwork))
 
     ! solve eigenvalue problem
-    call log_message("solving evp using QR algorithm zgeev (LAPACK)", level="debug")
+    call logger%debug("solving evp using QR algorithm zgeev (LAPACK)")
     call zgeev( &
       "N", &
       jobvr, &
@@ -136,12 +134,8 @@ contains
       info &
     )
     if (info /= 0) then ! LCOV_EXCL_START
-      call log_message("LAPACK routine zgeev failed!", level="warning")
-      call log_message( &
-        "value for the info parameter: " // str(info), &
-        level="warning", &
-        use_prefix=.false. &
-      )
+      call logger%warning("LAPACK routine zgeev failed!")
+      call logger%warning("value for the info parameter: " // str(info))
     end if ! LCOV_EXCL_STOP
 
     ! tear down work arrays

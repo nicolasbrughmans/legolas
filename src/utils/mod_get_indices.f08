@@ -25,7 +25,7 @@ contains
   !> Function to locate the index of a given character in a character array.
   !! Iterates over the elements and returns on the first hit, if no match
   !! was found zero is returned.
-  function find_index_in_character_array(name, array) result(match_idx)
+  pure function find_index_in_character_array(name, array) result(match_idx)
     !> the name to search for
     character(len=*), intent(in)  :: name
     !> array with the names to search in
@@ -47,7 +47,7 @@ contains
   !> Function to locate the indices of an array of characters in another
   !! character array. Returns the indices of the first hit, it no match was
   !! found zero is returned.
-  function find_indices_in_character_array(names, array) result(match_idxs)
+  pure function find_indices_in_character_array(names, array) result(match_idxs)
     !> the names to search for
     character(len=*), intent(in)  :: names(:)
     !> array in which to sarch in
@@ -66,12 +66,17 @@ contains
   !! If `odd` is `.true.` returns the odd indices, otherwise the even indices.
   !! If `edge` equals `"left"`, returns the indices corresponding to the left boundary
   !! block, if `edge` equals `"right"` returns indices for the right boundary block.
-  function transform_state_variable_to_subblock_index(variables, odd, edge) result(idxs)
-    use mod_global_variables, only: state_vector, dim_subblock
-    use mod_logging, only: log_message, str
+  function transform_state_variable_to_subblock_index( &
+    variables, state_vector, dim_subblock, odd, edge &
+  ) result(idxs)
+    use mod_logging, only: logger, str
 
     !> array of state vector variable names
     character(len=*), intent(in)  :: variables(:)
+    !> state vector to consider
+    character(len=*), intent(in)  :: state_vector(:)
+    !> dimension of the subblock
+    integer, intent(in)  :: dim_subblock
     !> uses odd indices if .true. and even if .false.
     logical, intent(in) :: odd
     !> which edge to consider, `"left"` for left boundary and `"right"` for right one
@@ -85,10 +90,9 @@ contains
     if (odd) idxs = idxs - 1
     if (edge == "right") idxs = idxs + dim_subblock
     if (size(idxs) == 0) then
-      call log_message( &
+      call logger%error( &
         "could not retrieve subblock indices for any variable in " // str(variables) &
-        // " for state vector " // str(state_vector), &
-        level="error" &
+        // " for state vector " // str(state_vector) &
       )
       return
     end if
