@@ -553,7 +553,9 @@ class LegolasDataSet(LegolasDataContainer):
             ev_guesses, ev_idxs, getter_func=self.filereader.read_eigenfunction
         )
 
-    def get_derived_eigenfunctions(self, ev_guesses=None, ev_idxs=None, mute=False) -> np.ndarray:
+    def get_derived_eigenfunctions(
+        self, ev_guesses=None, ev_idxs=None, mute=False
+    ) -> np.ndarray:
         """
         Returns the derived eigenfunctions based on given eigenvalue guesses or their
         indices. An array will be returned where every item is a dictionary, containing
@@ -586,7 +588,9 @@ class LegolasDataSet(LegolasDataContainer):
             getter_func=self.filereader.read_derived_eigenfunction,
         )
 
-    def get_nearest_eigenvalues(self, ev_guesses, min_distance=0.0) -> tuple(np.ndarray, np.ndarray):
+    def get_nearest_eigenvalues(
+        self, ev_guesses, min_distance=0.0
+    ) -> tuple(np.ndarray, np.ndarray):
         """
         Calculates the eigenvalues nearest to a given guess. This calculates
         the nearest eigenvalue based on the distance between two points.
@@ -615,8 +619,8 @@ class LegolasDataSet(LegolasDataContainer):
                 self.eigenvalues.imag - ev_guess.imag
             ) ** 2
             # we don't want eigenvalues closer than min_distance
-            with np.errstate(invalid='ignore'):
-                mask = (distances < min_distance**2)
+            with np.errstate(invalid="ignore"):
+                mask = distances < min_distance**2
             distances[mask] = np.nan
             # closest distance (squared)
             idx = np.nanargmin(distances)
@@ -629,7 +633,9 @@ class LegolasDataSet(LegolasDataContainer):
         # plt.show()
         return idxs, eigenvals
 
-    def get_omega_max(self, real=True, strip=False, range_omega=(0.0,1e24)):
+    def get_omega_max(
+        self, real=True, strip=False, range_omega=(0.0, 1e24), return_index=False
+    ):
         """
         Calculates the maximum of the real or imaginary part of a spectrum.
 
@@ -638,10 +644,10 @@ class LegolasDataSet(LegolasDataContainer):
         real : bool
             Returns the largest real part if True (default option), if False, returns the largest imaginary part.
         strip : bool
-            Look for maximum in a horizontal half-plane if True. Default False. 
+            Look for maximum in a horizontal half-plane if True. Default False.
         range_omega : tuple of floats
             The horizontal range of the strip if strip=True.
-        
+
         Returns
         -------
         omega_max : complex
@@ -653,7 +659,9 @@ class LegolasDataSet(LegolasDataContainer):
         if strip:
             omega_min, omega_max = range_omega
             # all eigvals outside of strip locally get replaced by NaN
-            mask = ((np.real(self.eigenvalues) - omega_min)*(np.real(self.eigenvalues) - omega_max) > 0)
+            mask = (np.real(self.eigenvalues) - omega_min) * (
+                np.real(self.eigenvalues) - omega_max
+            ) > 0
             eigvals[mask] = np.nan
 
         if real:
@@ -661,7 +669,10 @@ class LegolasDataSet(LegolasDataContainer):
         else:
             idx = np.nanargmax(np.imag(eigvals))
 
-        return self.eigenvalues[idx]
+        if not return_index:
+            return self.eigenvalues[idx]
+        else:
+            return idx, self.eigenvalues[idx]
 
 
 class LegolasDataSeries(LegolasDataContainer):
@@ -872,7 +883,7 @@ class LegolasDataSeries(LegolasDataContainer):
         ----------
         real : bool
             Returns the largest real part if True (default option), if False, returns the largest imaginary part.
-        
+
         Returns
         -------
         omega_max : numpy.ndarray
