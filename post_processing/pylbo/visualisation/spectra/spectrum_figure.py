@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import copy
 
+import numpy as np
 from matplotlib.axes import Axes as mpl_axes
 from matplotlib.figure import Figure as mpl_fig
 from pylbo.visualisation.figure_window import InteractiveFigureWindow
@@ -120,8 +121,11 @@ class SpectrumFigure(InteractiveFigureWindow):
     def add_eigenfunctions(self):
         raise NotImplementedError()
 
-    def add_derived_eigenfunctions(self):
-        raise NotImplementedError()
+    def has_valid_continua(self, data):
+        continua = getattr(data, "continua", None)
+        if isinstance(continua, (list, np.ndarray)):
+            return all([c is not None for c in continua])
+        return continua is not None
 
     @property
     def c_handler(self):

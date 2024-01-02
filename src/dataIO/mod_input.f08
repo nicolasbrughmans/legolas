@@ -3,7 +3,7 @@
 !! Contains subroutines to retrieve the parfile based on the commandline arguments
 !! and to read the parfile, setting the global variables.
 module mod_input
-  use mod_global_variables, only: dp, str_len, NaN
+  use mod_global_variables, only: dp, str_len, str_len_arr, NaN
   use mod_logging, only: logger
   use mod_settings, only: settings_t
   implicit none
@@ -61,9 +61,10 @@ contains
     real(dp) :: x_start, x_end
     logical :: coaxial
     logical :: force_r0
+    logical :: symmetric_grid
 
     namelist /gridlist/ &
-      geometry, gridpoints, x_start, x_end, coaxial, force_r0
+      geometry, gridpoints, x_start, x_end, coaxial, force_r0, symmetric_grid
 
     ! defaults
     geometry = settings%grid%get_geometry()
@@ -72,6 +73,7 @@ contains
     x_end = settings%grid%get_grid_end()
     coaxial = settings%grid%coaxial
     force_r0 = settings%grid%force_r0
+    symmetric_grid = settings%grid%symmetric_grid
 
     read(unit, nml=gridlist, iostat=iostat, iomsg=iomsg)
     call parse_io_info(iostat, iomsg)
@@ -81,6 +83,7 @@ contains
     call settings%grid%set_grid_boundaries(grid_start=x_start, grid_end=x_end)
     settings%grid%coaxial = coaxial
     settings%grid%force_r0 = force_r0
+    settings%grid%symmetric_grid = symmetric_grid
   end subroutine read_gridlist
 
 
@@ -90,7 +93,7 @@ contains
     integer :: iostat
     character(str_len) :: iomsg
 
-    logical :: write_matrices, write_eigenvectors, write_residuals
+    logical :: write_matrices, write_eigenvectors, write_residuals, write_background
     logical :: write_eigenfunctions, write_derived_eigenfunctions
     logical :: write_eigenfunction_subset
     logical :: show_results
@@ -100,8 +103,8 @@ contains
     character(len=str_len) :: basename_datfile, output_folder
 
     namelist /savelist/ &
-      write_matrices, write_eigenvectors, write_residuals, write_eigenfunctions, &
-      write_derived_eigenfunctions, write_eigenfunction_subset, &
+      write_matrices, write_eigenvectors, write_residuals, write_background, &
+      write_eigenfunctions, write_derived_eigenfunctions, write_eigenfunction_subset, &
       show_results, basename_datfile, output_folder, logging_level, &
       eigenfunction_subset_radius, eigenfunction_subset_center
 
@@ -109,6 +112,7 @@ contains
     write_matrices = settings%io%write_matrices
     write_eigenvectors = settings%io%write_eigenvectors
     write_residuals = settings%io%write_residuals
+    write_background = settings%io%write_background
     write_eigenfunctions = settings%io%write_eigenfunctions
     write_derived_eigenfunctions = settings%io%write_derived_eigenfunctions
     write_eigenfunction_subset = settings%io%write_ef_subset
@@ -127,6 +131,7 @@ contains
     settings%io%write_matrices = write_matrices
     settings%io%write_eigenvectors = write_eigenvectors
     settings%io%write_residuals = write_residuals
+    settings%io%write_background = write_background
     settings%io%write_eigenfunctions = write_eigenfunctions
     settings%io%write_derived_eigenfunctions = write_derived_eigenfunctions
     settings%io%write_ef_subset = write_eigenfunction_subset
@@ -188,7 +193,9 @@ contains
     character(str_len) :: iomsg
 
     character(len=str_len) :: physics_type
-    logical :: flow, incompressible, radiative_cooling, external_gravity, &
+    character(len=str_len_arr), allocatable :: basis_functions(:)
+    logical :: flow, incompressible, radiative_cooling, heating, &
+      force_thermal_balance, external_gravity, &
       parallel_conduction, perpendicular_conduction, resistivity, use_eta_dropoff, &
       viscosity, viscous_heating, hall_mhd, hall_dropoff, &
       elec_inertia, inertia_dropoff
@@ -201,7 +208,8 @@ contains
     real(dp) :: dropoff_edge_dist, dropoff_width
 
     namelist /physicslist/ &
-      physics_type, mhd_gamma, flow, incompressible, radiative_cooling, &
+      physics_type, basis_functions, mhd_gamma, flow, incompressible, &
+      radiative_cooling, heating, force_thermal_balance, &
       external_gravity, parallel_conduction, perpendicular_conduction, &
       resistivity, use_eta_dropoff, viscosity, viscous_heating, hall_mhd, &
       hall_dropoff, elec_inertia, inertia_dropoff, ncool, &
@@ -211,6 +219,8 @@ contains
 
     ! get defaults
     physics_type = settings%get_physics_type()
+    allocate(basis_functions(16))
+    basis_functions = ""
     mhd_gamma = settings%physics%get_gamma()
     incompressible = settings%physics%is_incompressible
     dropoff_edge_dist = settings%physics%dropoff_edge_dist
@@ -219,6 +229,8 @@ contains
     flow = settings%physics%flow%is_enabled()
 
     radiative_cooling = settings%physics%cooling%is_enabled()
+    heating = settings%physics%heating%is_enabled()
+    force_thermal_balance = settings%physics%heating%force_thermal_balance
     ncool = settings%physics%cooling%get_interpolation_points()
     cooling_curve = settings%physics%cooling%get_cooling_curve()
 
@@ -248,11 +260,16 @@ contains
     read(unit, nml=physicslist, iostat=iostat, iomsg=iomsg)
     call parse_io_info(iostat, iomsg)
 
+
     call settings%set_state_vector(physics_type)
+    basis_functions = pack(basis_functions, basis_functions /= "")
+    call settings%state_vector%set_basis_functions(basis_functions)
     call settings%physics%set_gamma(mhd_gamma)
     if (incompressible) call settings%physics%set_incompressible()
     if (flow) call settings%physics%flow%enable()
     if (radiative_cooling) call settings%physics%enable_cooling(cooling_curve, ncool)
+    settings%physics%heating%force_thermal_balance = force_thermal_balance
+    if (heating) call settings%physics%enable_heating()
     if (external_gravity) call settings%physics%enable_gravity()
     if (parallel_conduction) then
       call settings%physics%enable_parallel_conduction(fixed_tc_para_value)
@@ -260,13 +277,14 @@ contains
     if (perpendicular_conduction) then
       call settings%physics%enable_perpendicular_conduction(fixed_tc_perp_value)
     end if
-    if (resistivity) call settings%physics%enable_resistivity( &
-      fixed_resistivity_value &
-    )
+    if (resistivity) call settings%physics%enable_resistivity(fixed_resistivity_value)
+    settings%physics%resistivity%use_dropoff = use_eta_dropoff
     if (viscosity) call settings%physics%enable_viscosity( &
       viscosity_value, viscous_heating &
     )
     if (hall_mhd) call settings%physics%enable_hall(elec_inertia, electron_fraction)
+    settings%physics%hall%use_dropoff = hall_dropoff
+    settings%physics%hall%use_inertia_dropoff = inertia_dropoff
     settings%physics%dropoff_edge_dist = dropoff_edge_dist
     settings%physics%dropoff_width = dropoff_width
   end subroutine read_physicslist
@@ -324,14 +342,16 @@ contains
     integer :: iostat
     character(str_len) :: iomsg
 
+    real(dp) :: unit_numberdensity
     real(dp) :: unit_density, unit_temperature, unit_magneticfield, unit_length
     real(dp) :: mean_molecular_weight
 
     namelist /unitslist/ &
-      unit_density, unit_temperature, unit_magneticfield, unit_length, &
-      mean_molecular_weight
+      unit_density, unit_numberdensity, unit_temperature, unit_magneticfield, &
+      unit_length, mean_molecular_weight
 
     ! defaults
+    unit_numberdensity = NaN
     unit_density = NaN
     unit_temperature = settings%units%get_unit_temperature()
     unit_magneticfield = settings%units%get_unit_magneticfield()
@@ -341,7 +361,14 @@ contains
     read(unit, nml=unitslist, iostat=iostat, iomsg=iomsg)
     call parse_io_info(iostat, iomsg)
 
-    if (.not. is_NaN(unit_density)) then
+    if (.not. is_NaN(unit_numberdensity)) then
+      call settings%units%set_units_from_numberdensity( &
+        unit_length=unit_length, &
+        unit_temperature=unit_temperature, &
+        unit_numberdensity=unit_numberdensity, &
+        mean_molecular_weight=mean_molecular_weight &
+      )
+    else if (.not. is_NaN(unit_density)) then
       call settings%units%set_units_from_density( &
         unit_length=unit_length, &
         unit_magneticfield=unit_magneticfield, &

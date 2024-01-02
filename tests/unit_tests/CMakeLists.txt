@@ -6,9 +6,19 @@ enable_language(Fortran)
 option(Coverage "Coverage" OFF)
 
 get_filename_component(Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
-set(CMAKE_Fortran_FLAGS "-fcheck=all -fbounds-check -Wall \
-                         -Wextra -Wconversion -pedantic -fbacktrace -cpp \
-                         -ffree-line-length-256")
+set(
+    CMAKE_Fortran_FLAGS
+    "-fcheck=all \
+    -fbounds-check \
+    -Wall \
+    -Wextra \
+    -Wconversion \
+    -pedantic \
+    -fbacktrace \
+    -cpp \
+    -ffree-line-length-256 \
+    -Wno-unused-dummy-argument"
+)
 
 find_package(PFUNIT REQUIRED)
 enable_testing()
@@ -31,9 +41,10 @@ include(${setup_tools}/findLAPACK.cmake)
 include(${setup_tools}/findARPACK.cmake)
 
 # add default modules to library
-add_library(suite
-        mod_suite_utils.f90
+set( aux_modules
+    mod_suite_utils.f90
 )
+add_library(suite ${aux_modules})
 set_target_properties (suite
         PROPERTIES
         Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
@@ -76,12 +87,14 @@ set( test_sources
         mod_test_eigenfunctions.pf
         mod_test_cooling.pf
         mod_test_cooling_tables.pf
+        mod_test_heating.pf
+        mod_test_heatloss.pf
         mod_test_resistivity.pf
         mod_test_conduction.pf
         mod_test_boundaries.pf
+        mod_test_statevector.pf
         mod_test_splines.pf
         mod_test_quadblock.pf
-        mod_test_matrix_operators.pf
         mod_test_interpolation.pf
         mod_test_integration.pf
         mod_test_inspections.pf

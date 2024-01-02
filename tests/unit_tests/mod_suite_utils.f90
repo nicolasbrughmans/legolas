@@ -1,10 +1,15 @@
 module mod_suite_utils
   use mod_global_variables, only: dp
   use mod_settings, only: settings_t, new_settings
+  use mod_background, only: background_t, new_background
+  use mod_physics, only: physics_t, new_physics
+  use mod_grid, only: grid_t, new_grid
+  use mod_function_utils, only: from_function
   use mod_logging, only: logger
   implicit none
 
   real(dp), parameter :: TOL = 1.0d-12
+  integer, parameter :: TEST_LOG_LVL = 1
 
 contains
 
@@ -21,7 +26,7 @@ contains
 
     call initialise_globals()
     call init_equilibrium_params()
-    call logger%set_logging_level(1)  ! also print warnings
+    call logger%set_logging_level(TEST_LOG_LVL)  ! also print warnings
     k2 = 1.0d0
     k3 = 2.5d0
   end subroutine reset_globals
@@ -29,51 +34,81 @@ contains
 
   function get_settings() result(settings)
     type(settings_t) :: settings
-
     settings = new_settings()
+    call settings%set_state_vector("mhd")
   end function get_settings
 
 
-  subroutine reset_fields(settings, init_fields)
-    use mod_equilibrium, only: rho_field, equilibrium_clean, initialise_equilibrium
-
-    type(settings_t), intent(inout), optional :: settings
-    logical, intent(in) :: init_fields
-
-    if (allocated(rho_field % rho0)) then
-      call equilibrium_clean()
-    end if
-    if (init_fields) then
-      call initialise_equilibrium(settings)
-    end if
-  end subroutine reset_fields
+  function get_background() result(background)
+    type(background_t) :: background
+    background = new_background()
+  end function get_background
 
 
-  subroutine clean_up(settings)
-    use mod_grid, only: grid, grid_clean
-    use mod_radiative_cooling, only: radiative_cooling_clean
+  function get_physics(settings, background) result(physics)
+    type(settings_t), intent(in) :: settings
+    type(background_t), intent(in) :: background
+    type(physics_t) :: physics
+    physics = new_physics(settings, background)
+  end function get_physics
+
+
+  function get_grid(settings) result(grid)
+    type(settings_t), intent(in) :: settings
+    type(grid_t) :: grid
+    grid = new_grid(settings)
+  end function get_grid
+
+
+  subroutine get_test_matrices(settings, grid, background, physics, matrix_A, matrix_B)
+    use mod_matrix_structure, only: matrix_t, new_matrix
+    use mod_matrix_manager, only: build_matrices
 
     type(settings_t), intent(in) :: settings
+    type(grid_t), intent(in) :: grid
+    type(background_t), intent(in) :: background
+    type(physics_t), intent(in) :: physics
+    type(matrix_t), intent(out) :: matrix_A
+    type(matrix_t), intent(out) :: matrix_B
 
-    if (allocated(grid)) then
-      call grid_clean()
-    end if
-    call reset_fields(init_fields=.false.)
-    if (settings%physics%cooling%is_enabled()) then
-      call radiative_cooling_clean()
-    end if
-  end subroutine clean_up
+    matrix_A = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="A")
+    matrix_B = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="B")
+    call build_matrices(matrix_B, matrix_A, settings, grid, background, physics)
+  end subroutine get_test_matrices
 
 
-  subroutine create_test_grid(settings, pts, geometry, grid_start, grid_end)
-    use mod_grid, only: initialise_grid
+  real(dp) function zero(x)
+    real(dp), intent(in) :: x
+    zero = 0.0d0
+  end function zero
 
+
+  real(dp) function one(x)
+    real(dp), intent(in) :: x
+    one = 1.0d0
+  end function one
+
+
+  function create_test_grid(settings, pts, geometry, grid_start, grid_end) result(grid)
     type(settings_t), intent(inout) :: settings
-    integer, intent(in)             :: pts
-    character(len=*), intent(in)    :: geometry
+    integer, intent(in), optional :: pts
+    character(len=*), intent(in), optional :: geometry
     real(dp), intent(in), optional  :: grid_start, grid_end
+    type(grid_t) :: grid
     real(dp) :: x_start, x_end
+    integer :: gridpts
+    character(:), allocatable :: grid_geometry
 
+    if (present(pts)) then
+      gridpts = pts
+    else
+      gridpts = settings%grid%get_gridpts()
+    end if
+    if (present(geometry)) then
+      grid_geometry = geometry
+    else
+      grid_geometry = settings%grid%get_geometry()
+    end if
     if (present(grid_start)) then
       x_start = grid_start
     else
@@ -84,12 +119,14 @@ contains
     else
       x_end = 1.0d0
     end if
-    call settings%grid%set_geometry(geometry)
+    call settings%grid%set_geometry(grid_geometry)
     call settings%grid%set_grid_boundaries(x_start, x_end)
-    call settings%grid%set_gridpts(pts)
+    call settings%grid%set_gridpts(gridpts)
     call settings%update_block_dimensions()
-    call initialise_grid(settings)
-  end subroutine create_test_grid
+
+    grid = new_grid(settings)
+    call grid%initialise()
+  end function create_test_grid
 
 
   subroutine set_default_units(settings)
@@ -106,9 +143,11 @@ contains
   function linspace(x0, x1, xvals) result(xarray)
     real(dp), intent(in)  :: x0, x1
     integer, intent(in)   :: xvals
-    real(dp)  :: dx, xarray(xvals)
+    real(dp), allocatable :: xarray(:)
+    real(dp)  :: dx
     integer   :: i
 
+    allocate(xarray(xvals))
     dx = (x1 - x0) / (xvals - 1)
     do i = 1, xvals
       xarray(i) = x0 + (i - 1) * dx

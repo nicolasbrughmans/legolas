@@ -105,10 +105,34 @@ class LegolasHeader:
             read_string_from_istream(istream, length=len_name, amount=size_vector),
             dtype=str,
         )
+        data["basis_functions"] = self._read_basis_functions(
+            istream, data["state_vector"]
+        )
         data["dims"] = {}
         for key in ("integralblock", "subblock", "quadblock", "matrix"):
             data["dims"][f"dim_{key}"] = read_int_from_istream(istream)
         return data
+
+    def _read_basis_functions(
+        self, istream: BinaryIO, state_vector: np.ndarray[str]
+    ) -> dict:
+        old_defaults = {
+            "rho": "quadratic",
+            "v1": "cubic",
+            "v2": "quadratic",
+            "v3": "quadratic",
+            "T": "quadratic",
+            "a1": "quadratic",
+            "a2": "cubic",
+            "a3": "cubic",
+        }
+        if self.legolas_version < "2.1.0":
+            return {key: old_defaults[key] for key in state_vector}
+        len_basis, size_basis = read_int_from_istream(istream, amount=2)
+        basis_functions = read_string_from_istream(
+            istream, length=len_basis, amount=size_basis
+        )
+        return {var: func for var, func in zip(state_vector, basis_functions)}
 
     def _read_grid_info(self, istream: BinaryIO) -> dict:
         data = {}
@@ -217,7 +241,14 @@ class LegolasHeader:
 
     def _read_equilibrium_names(self, istream: BinaryIO) -> dict:
         nb_names, len_name = read_int_from_istream(istream, amount=2)
-        names = read_string_from_istream(istream, length=len_name, amount=nb_names)
+        self.data["has_background"] = nb_names > 0
+        names = (
+            read_string_from_istream(istream, length=len_name, amount=nb_names)
+            if self.data["has_background"]
+            else []
+        )
+        # due to a typo older datfiles contain 'db03' instead of 'dB03'
+        names = [name.replace("db03", "dB03") for name in names]
         return {"equilibrium_names": names}
 
     def _get_eigenfunction_offsets(self, istream: BinaryIO) -> dict:
