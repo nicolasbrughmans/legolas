@@ -9,7 +9,24 @@ from pylbo.automation.generator import ParfileGenerator
 
 def test_basename_none(tmpdir):
     gen = ParfileGenerator({}, output_dir=tmpdir)
-    assert gen.basename == "parfile"
+    assert gen.basenames == ["parfile"]
+
+
+def test_basename_none_multiple(tmpdir):
+    gen = ParfileGenerator({"number_of_runs": 5}, output_dir=tmpdir)
+    assert gen.basenames == [f"parfile{i:04d}" for i in range(1, 6)]
+
+
+def test_basename_multiple():
+    names = [f"test{i}" for i in range(1, 6)]
+    gen = ParfileGenerator({"number_of_runs": 5}, basename=names)
+    assert gen.basenames == names
+
+
+def test_basename_multiple_inconsistent_nbruns():
+    names = [f"test{i}" for i in range(1, 6)]
+    with pytest.raises(ValueError):
+        ParfileGenerator({"number_of_runs": 4}, basename=names)
 
 
 def test_outputdir_none():
@@ -44,6 +61,46 @@ def test_invalid_nb_runs():
         pylbo.generate_parfiles(
             parfile_dict={"gridpoints": [50, 100], "number_of_runs": 1}
         )
+
+
+def test_basenames_with_prefix(tmpdir):
+    names = [f"test{i}" for i in range(1, 6)]
+    parfiles = pylbo.generate_parfiles(
+        parfile_dict={"gridpoints": 100, "number_of_runs": len(names)},
+        basename=names,
+        output_dir=tmpdir,
+    )
+    assert len(parfiles) == len(names)
+    expected_names = [f"{i:04d}{name}" for i, name in enumerate(names, start=1)]
+    for parfile, expected_name in zip(parfiles, expected_names):
+        assert Path(parfile).stem == expected_name
+
+
+def test_basenames_with_custom_prefix(tmpdir):
+    names = [f"test{i}" for i in range(1, 6)]
+    parfiles = pylbo.generate_parfiles(
+        parfile_dict={"gridpoints": 100, "number_of_runs": len(names)},
+        basename=names,
+        output_dir=tmpdir,
+        nb_prefix_digits=6,
+    )
+    assert len(parfiles) == len(names)
+    expected_names = [f"{i:06d}{name}" for i, name in enumerate(names, start=1)]
+    for parfile, expected_name in zip(parfiles, expected_names):
+        assert Path(parfile).stem == expected_name
+
+
+def test_basenames_without_prefix(tmpdir):
+    names = [f"test{i}" for i in range(1, 6)]
+    parfiles = pylbo.generate_parfiles(
+        parfile_dict={"gridpoints": 100, "number_of_runs": len(names)},
+        basename=names,
+        output_dir=tmpdir,
+        prefix_numbers=False,
+    )
+    assert len(parfiles) == len(names)
+    for parfile, expected_name in zip(parfiles, names):
+        assert Path(parfile).stem == expected_name
 
 
 def test_savelist_not_present(tmpdir):

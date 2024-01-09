@@ -1,6 +1,8 @@
 module mod_eigenfunctions
   use mod_global_variables, only: dp
   use mod_settings, only: settings_t
+  use mod_background, only: background_t
+  use mod_grid, only: grid_t
   use mod_base_efs, only: base_ef_t
   use mod_derived_efs, only: derived_ef_t, deallocate_derived_ef_module_variables
   use mod_derived_ef_names, only: create_and_set_derived_state_vector
@@ -10,11 +12,12 @@ module mod_eigenfunctions
 
   type, public :: eigenfunctions_t
     type(settings_t), pointer, private :: settings
+    type(grid_t), pointer, private :: grid
+    type(background_t), pointer, private :: background
     type(base_ef_t), allocatable :: base_efs(:)
     type(derived_ef_t), allocatable :: derived_efs(:)
     logical, allocatable :: ef_written_flags(:)
     integer, allocatable :: ef_written_idxs(:)
-    real(dp), allocatable :: ef_grid(:)
 
   contains
 
@@ -29,41 +32,45 @@ module mod_eigenfunctions
 
 contains
 
-  function new_eigenfunctions(settings) result(eigenfunctions)
+  function new_eigenfunctions(settings, grid, background) result(eigenfunctions)
     type(settings_t), target, intent(inout) :: settings
+    type(grid_t), target, intent(in) :: grid
+    type(background_t), target, intent(in) :: background
     type(eigenfunctions_t) :: eigenfunctions
     eigenfunctions%settings => settings
+    eigenfunctions%grid => grid
+    eigenfunctions%background => background
   end function new_eigenfunctions
 
 
   subroutine initialise(this, omega)
     class(eigenfunctions_t), intent(inout) :: this
     complex(dp), intent(in) :: omega(:)
-    character(len=:), allocatable :: state_vector(:)
     character(len=:), allocatable :: derived_state_vector(:)
     integer :: i, nb_efs
 
     call this%select_eigenfunctions_to_save(omega)
-    this%ef_grid = get_ef_grid(this%settings)
-    state_vector = this%settings%get_state_vector()
     nb_efs = size(this%ef_written_idxs)
 
-    allocate(this%base_efs(size(state_vector)))
+    allocate(this%base_efs(size(this%settings%state_vector%components)))
     do i = 1, size(this%base_efs)
       call this%base_efs(i)%initialise( &
-        name=state_vector(i), ef_grid_size=size(this%ef_grid), nb_efs=nb_efs &
+        sv_component=this%settings%state_vector%components(i)%ptr, &
+        ef_grid_size=size(this%grid%ef_grid), &
+        nb_efs=nb_efs &
       )
     end do
-    deallocate(state_vector)
 
     if (.not. this%settings%io%write_derived_eigenfunctions) return
 
-    derived_state_vector = create_and_set_derived_state_vector(this%settings)
+    derived_state_vector = create_and_set_derived_state_vector( &
+      this%settings, this%background &
+    )
     allocate(this%derived_efs(size(derived_state_vector)))
     do i = 1, size(this%derived_efs)
       call this%derived_efs(i)%initialise( &
         name=derived_state_vector(i), &
-        ef_grid_size=size(this%ef_grid), &
+        ef_grid_size=size(this%grid%ef_grid), &
         nb_efs=nb_efs &
       )
     end do
@@ -78,9 +85,9 @@ contains
     do i = 1, size(this%base_efs)
       call this%base_efs(i)%assemble( &
         settings=this%settings, &
+        grid=this%grid, &
         idxs_to_assemble=this%ef_written_idxs, &
-        right_eigenvectors=right_eigenvectors, &
-        ef_grid=this%ef_grid &
+        right_eigenvectors=right_eigenvectors &
       )
     end do
 
@@ -88,9 +95,10 @@ contains
     do i = 1, size(this%derived_efs)
       call this%derived_efs(i)%assemble( &
         settings=this%settings, &
+        grid=this%grid, &
+        background=this%background, &
         idxs_to_assemble=this%ef_written_idxs, &
-        right_eigenvectors=right_eigenvectors, &
-        ef_grid=this%ef_grid &
+        right_eigenvectors=right_eigenvectors &
       )
     end do
     call deallocate_derived_ef_module_variables()
@@ -114,7 +122,9 @@ contains
     end if
     if (allocated(this%ef_written_flags)) deallocate(this%ef_written_flags)
     if (allocated(this%ef_written_idxs)) deallocate(this%ef_written_idxs)
-    if (allocated(this%ef_grid)) deallocate(this%ef_grid)
+    nullify(this%settings)
+    nullify(this%background)
+    nullify(this%grid)
   end subroutine delete
 
 
@@ -155,24 +165,5 @@ contains
       distance_from_subset_center <= radius &
     )
   end function eigenvalue_is_inside_subset_radius
-
-
-  pure function get_ef_grid(settings) result(ef_grid)
-    use mod_grid, only: grid
-    type(settings_t), intent(in) :: settings
-    real(dp), allocatable :: ef_grid(:)
-    integer :: grid_idx
-
-    allocate(ef_grid(settings%grid%get_ef_gridpts()))
-    ! first gridpoint, left edge
-    ef_grid(1) = grid(1)
-    ! other gridpoints
-    do grid_idx = 1, settings%grid%get_gridpts() - 1
-      ! position of center point in grid interval
-      ef_grid(2 * grid_idx) = 0.5_dp * (grid(grid_idx) + grid(grid_idx + 1))
-      ! position of end point in grid interval
-      ef_grid(2 * grid_idx + 1) = grid(grid_idx + 1)
-    end do
-  end function get_ef_grid
 
 end module mod_eigenfunctions

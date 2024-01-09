@@ -133,7 +133,9 @@ class LegolasLegacyHeader(LegolasHeader):
             if self.legolas_version >= "1.0.2"
             else self._str_len_array
         )
-        return read_string_from_istream(istream, length=len_name, amount=nb_names)
+        names = read_string_from_istream(istream, length=len_name, amount=nb_names)
+        names = [name.replace("grav", "gravity") for name in names]
+        return names
 
     def _read_units(self, istream: BinaryIO) -> dict:
         units = {"cgs": read_boolean_from_istream(istream)}
@@ -199,9 +201,20 @@ class LegolasLegacyHeader(LegolasHeader):
         self.data["nb_eqs"] = 8
         self.data["physics_type"] = "mhd"
         self.data["state_vector"] = ["rho", "v1", "v2", "v3", "T", "a1", "a2", "a3"]
+        self.data["basis_functions"] = {
+            "rho": "quadratic",
+            "v1": "cubic",
+            "v2": "quadratic",
+            "v3": "quadratic",
+            "T": "quadratic",
+            "a1": "quadratic",
+            "a2": "cubic",
+            "a3": "cubic",
+        }
         self.data["dims"] = {
             "dim_integralblock": 2,
             "dim_subblock": 8 * 2,
             "dim_quadblock": 2 * 8 * 2,
             "dim_matrix": self.data["gridpoints"] * 8 * 2,
         }
+        self.data["has_background"] = True

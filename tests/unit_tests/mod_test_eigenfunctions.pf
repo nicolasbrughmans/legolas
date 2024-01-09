@@ -7,6 +7,8 @@ module mod_test_eigenfunctions
   complex(dp) :: eigenvals(25)
   complex(dp), allocatable :: eigenvectors(:, :)
   type(settings_t) :: settings
+  type(background_t) :: background
+  type(grid_t) :: grid
   type(eigenfunctions_t) :: eigenfunctions
 
 contains
@@ -32,13 +34,21 @@ contains
 
 
   subroutine use_bfield(use_b01)
-    use mod_equilibrium, only: B_field
     logical, intent(in)  :: use_b01
 
-    if (use_b01) B_field % B01 = 1.0d0
-    B_field % B02 = 1.0d0
-    B_field % B03 = 2.0d0
+    if (use_b01) call background%set_magnetic_1_funcs(B01_func=unity)
+    call background%set_magnetic_2_funcs(B02_func=unity)
+    call background%set_magnetic_3_funcs(B03_func=two)
   end subroutine use_bfield
+
+
+  real(dp) function unity()
+    unity = 1.0d0
+  end function unity
+
+  real(dp) function two()
+    two = 2.0d0
+  end function two
 
 
 
@@ -47,10 +57,10 @@ contains
     integer :: i, j, pos
 
     call reset_globals()
-    call reset_fields(settings, init_fields=.true.)
     settings = get_settings()
-    eigenfunctions = new_eigenfunctions(settings)
-    call create_test_grid(settings, pts=20, geometry="Cartesian")
+    background = get_background()
+    grid = create_test_grid(settings, pts=20, geometry="Cartesian")
+    eigenfunctions = new_eigenfunctions(settings, grid, background)
     ! creates a square grid between (-2, 2) and (2, -2)
     pos = 1
     do i = 2, -2, -1
@@ -64,9 +74,9 @@ contains
 
   @after
   subroutine teardown_test()
-    call clean_up(settings)
     call eigenfunctions%delete()
     call settings%delete()
+    call grid%delete()
     if (allocated(eigenvectors)) deallocate(eigenvectors)
   end subroutine teardown_test
 

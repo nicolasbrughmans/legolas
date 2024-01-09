@@ -7,6 +7,7 @@ from typing import Callable, Union
 import numpy as np
 from pylbo._version import VersionHandler
 from pylbo.exceptions import (
+    BackgroundNotPresent,
     EigenfunctionsNotPresent,
     EigenvectorsNotPresent,
     MatricesNotPresent,
@@ -14,7 +15,11 @@ from pylbo.exceptions import (
 )
 from pylbo.utilities.datfiles.file_reader import LegolasFileReader
 from pylbo.utilities.logger import pylboLogger
-from pylbo.utilities.toolbox import get_values, transform_to_numpy
+from pylbo.utilities.toolbox import (
+    get_maximum_eigenvalue,
+    get_values,
+    transform_to_numpy,
+)
 from pylbo.visualisation.continua import calculate_continua
 
 
@@ -53,6 +58,10 @@ class LegolasDataContainer(ABC):
 
     @abstractmethod
     def ef_names(self):
+        pass
+
+    @abstractmethod
+    def has_background(self):
         pass
 
     @abstractmethod
@@ -185,6 +194,7 @@ class LegolasDataSet(LegolasDataContainer):
         self.cgs = self.units["cgs"]
         self.eq_names = self.header["equilibrium_names"]
 
+        self._ensure_compatibility()
         self._continua = calculate_continua(self)
 
     def __iter__(self):
@@ -228,6 +238,11 @@ class LegolasDataSet(LegolasDataContainer):
     def parameters(self) -> dict:
         """Returns the parameters in a dict with the parameter names as keys"""
         return self._parameters
+
+    @property
+    def has_background(self) -> bool:
+        """Returns `True` if background is present."""
+        return self.header["has_background"]
 
     @property
     def has_efs(self) -> bool:
@@ -278,6 +293,26 @@ class LegolasDataSet(LegolasDataContainer):
         """Checks if residuals are present."""
         return self.header["has_residuals"]
 
+    @property
+    def is_mhd(self) -> bool:
+        """Checks if the dataset is MHD."""
+        return "mhd" in self.header.get("physics_type", None) and any(
+            self.equilibria["B0"] != 0
+        )
+
+    def _ensure_compatibility(self) -> None:
+        """
+        Makes sure that the dataset is backwards compatible with new changes.
+        Mainly used for older (<2.0.0) datasets.
+        """
+        if not self.has_background:
+            return
+        bg_keys_added_in_v200 = ["L0"]
+        for key in bg_keys_added_in_v200:
+            if self.equilibria.get(key, None) is None:
+                pylboLogger.debug(f"added '{key}' to equilibrium of '{self.datfile}'")
+                self.equilibria[key] = np.zeros_like(self.grid_gauss)
+
     def get_sound_speed(self, which_values=None) -> Union[float, np.ndarray]:
         """
         Calculates the sound speed based on the equilibrium arrays,
@@ -294,6 +329,8 @@ class LegolasDataSet(LegolasDataContainer):
             Array with the sound speed at every grid point, or a float corresponding
             to the value of `which_values` if provided.
         """
+        if not self.has_background:
+            raise BackgroundNotPresent(self.datfile, "get sound speed")
         pressure = self.equilibria["T0"] * self.equilibria["rho0"]
         cs = np.sqrt(self.gamma * pressure / self.equilibria["rho0"])
         return get_values(cs, which_values)
@@ -314,6 +351,8 @@ class LegolasDataSet(LegolasDataContainer):
             Array with the Alfvén speed at every grid point,
             or a float corresponding to the value of `which_values` if provided.
         """
+        if not self.has_background:
+            raise BackgroundNotPresent(self.datfile, "get Alfvén speed")
         cA = self.equilibria["B0"] / np.sqrt(self.equilibria["rho0"])
         return get_values(cA, which_values)
 
@@ -334,16 +373,17 @@ class LegolasDataSet(LegolasDataContainer):
             or a float corresponding to the value of `which_values` if provided.
             Returns `None` if the geometry is not cylindrical.
         """
+        if not self.has_background:
+            raise BackgroundNotPresent(self.datfile, "get tube speed")
         if not self.geometry == "cylindrical":
             pylboLogger.warning(
                 "geometry is not cylindrical, unable to calculate tube speed"
             )
             return None
-        else:
-            cA = self.get_alfven_speed()
-            cs = self.get_sound_speed()
-            ct = cs * cA / np.sqrt(cs**2 + cA**2)
-            return get_values(ct, which_values)
+        cA = self.get_alfven_speed()
+        cs = self.get_sound_speed()
+        ct = cs * cA / np.sqrt(cs**2 + cA**2)
+        return get_values(ct, which_values)
 
     def get_reynolds_nb(self, which_values=None) -> Union[float, np.ndarray]:
         """
@@ -363,6 +403,8 @@ class LegolasDataSet(LegolasDataContainer):
             or a float corresponding to the value of `which_values` if provided.
             Returns `None` if the resistivity is zero somewhere on the domain.
         """
+        if not self.has_background:
+            raise BackgroundNotPresent(self.datfile, "get Reynolds number")
         cs = self.get_sound_speed()
         a = self.x_end - self.x_start
         eta = self.equilibria["eta"]
@@ -372,9 +414,8 @@ class LegolasDataSet(LegolasDataContainer):
                 "calculate the Reynolds number"
             )
             return None
-        else:
-            Re = a * cs / eta
-            return get_values(Re, which_values)
+        Re = a * cs / eta
+        return get_values(Re, which_values)
 
     def get_magnetic_reynolds_nb(self, which_values=None) -> Union[float, np.ndarray]:
         """
@@ -394,6 +435,8 @@ class LegolasDataSet(LegolasDataContainer):
             or a float corresponding to the value of `which_values` if provided.
             Returns `None` if the resistivity is zero somewhere on the domain.
         """
+        if not self.has_background:
+            raise BackgroundNotPresent(self.datfile, "get magnetic Reynolds number")
         cA = self.get_alfven_speed()
         a = self.x_end - self.x_start
         eta = self.equilibria["eta"]
@@ -403,9 +446,8 @@ class LegolasDataSet(LegolasDataContainer):
                 "calculate the magnetic Reynolds number"
             )
             return None
-        else:
-            Rm = a * cA / eta
-            return get_values(Rm, which_values)
+        Rm = a * cA / eta
+        return get_values(Rm, which_values)
 
     def get_k0_squared(self) -> float:
         """
@@ -549,47 +591,26 @@ class LegolasDataSet(LegolasDataContainer):
         """
         if not self.has_efs:
             raise EigenfunctionsNotPresent("eigenfunctions not written to datfile")
-        return self._get_eigenfunction_like(
+        efs = self._get_eigenfunction_like(
             ev_guesses, ev_idxs, getter_func=self.filereader.read_eigenfunction
         )
-
-    def get_derived_eigenfunctions(self, ev_guesses=None, ev_idxs=None) -> np.ndarray:
-        """
-        Returns the derived eigenfunctions based on given eigenvalue guesses or their
-        indices. An array will be returned where every item is a dictionary, containing
-        both the eigenvalue and its quantities. Either eigenvalue guesses or
-        indices can be supplied, but not both.
-
-        Parameters
-        ----------
-        ev_guesses : complex, numpy.ndarray
-            Eigenvalue guesses.
-        ev_idxs : int, numpy.ndarray
-            Indices corresponding to the eigenvalues that need to be retrieved.
-
-        Returns
-        -------
-        numpy.ndarray
-            Array containing the derived eigenfunctions and eigenvalues
-            corresponding to the supplied indices. Every index in this array
-            contains a dictionary with the derived eigenfunctions and
-            corresponding eigenvalue. The keys of each dictionary are the
-            corresponding eigenfunction names.
-        """
         if not self.has_derived_efs:
-            raise EigenfunctionsNotPresent(
-                "derived eigenfunctions not written to datfile"
-            )
-        return self._get_eigenfunction_like(
+            return efs
+
+        # merge derived eigenfunctions with eigenfunctions
+        derived_efs = self._get_eigenfunction_like(
             ev_guesses,
             ev_idxs,
             getter_func=self.filereader.read_derived_eigenfunction,
         )
+        for i, ef in enumerate(efs):
+            ef.update(derived_efs[i]) if ef is not None else None
+        return efs
 
     def get_nearest_eigenvalues(self, ev_guesses) -> tuple(np.ndarray, np.ndarray):
         """
-        Calculates the eigenvalues nearest to a given guess. This calculates
-        the nearest eigenvalue based on the distance between two points.
+        Calculates the eigenvalues nearest to a given guess based on
+        the distance between two points.
 
         Parameters
         ----------
@@ -604,6 +625,32 @@ class LegolasDataSet(LegolasDataContainer):
             The nearest eigenvalues to the provided guesses, corresponding with the
             indices `idxs`.
         """
+        idxs, eigenvals = self.get_eigenvalues_at_distance(ev_guesses, min_distance=0.0)
+        return idxs, eigenvals
+
+    def get_eigenvalues_at_distance(
+        self, ev_guesses, min_distance=0.0
+    ) -> tuple(np.ndarray, np.ndarray):
+        """
+        Calculates the nearest eigenvalues nearest to a given guess
+        but at a minimum distance away.
+
+        Parameters
+        ----------
+        ev_guesses : float, complex, list of float, list of complex
+            The guesses for the eigenvalues. These can be a single float/complex value,
+            or a list/Numpy array of floats/complex values.
+        min_distance : float
+            Minimum distance from the guess the eigenvalue should have.
+
+        Returns
+        -------
+        Tuple(numpy.ndarray, numpy.ndarray)
+            The indices of the nearest eigenvalues at the minimum distance
+            in the :attr:`eigenvalues` array.
+            The nearest eigenvalues at a minimum distance to the provided guesses,
+            corresponding with the indices `idxs`.
+        """
         ev_guesses = transform_to_numpy(ev_guesses)
         idxs = np.empty(shape=len(ev_guesses), dtype=int)
         eigenvals = np.empty(shape=len(ev_guesses), dtype=complex)
@@ -612,11 +659,39 @@ class LegolasDataSet(LegolasDataContainer):
             distances = (self.eigenvalues.real - ev_guess.real) ** 2 + (
                 self.eigenvalues.imag - ev_guess.imag
             ) ** 2
+            # we don't want eigenvalues closer than min_distance
+            with np.errstate(invalid="ignore"):
+                mask = distances < min_distance**2
+            distances[mask] = np.nan
             # closest distance (squared)
             idx = np.nanargmin(distances)
             idxs[i] = idx
             eigenvals[i] = self.eigenvalues[idx]
         return idxs, eigenvals
+
+    def get_omega_max(self, real=True, re_range=None):
+        """
+        Calculates the maximum eigenvalue.
+        The real or imaginary part is used, depending on the `real` argument.
+        If a range is specified, the maximum eigenvalue is calculated within
+        that range on the real axis.
+
+        Parameters
+        ----------
+        eigenvalues : numpy.ndarray(dtype=complex)
+            The array of eigenvalues.
+        real : bool
+            If `True`, the real part of the eigenvalues is used.
+        re_range : tuple(float, float)
+            The range on the real axis to calculate the maximum eigenvalue.
+            Defaults to None, which means all eigenvalues are considered.
+
+        Returns
+        -------
+        complex
+            The maximum eigenvalue.
+        """
+        return get_maximum_eigenvalue(self.eigenvalues, real, re_range)
 
 
 class LegolasDataSeries(LegolasDataContainer):
@@ -647,7 +722,10 @@ class LegolasDataSeries(LegolasDataContainer):
         Returns the continua. Each key corresponds to a multiple Numpy arrays,
         one for each dataset.
         """
-        keys = self[0].continua.keys()
+        continua = self[0].continua
+        if continua is None:
+            return np.array([None] * len(self), dtype=object)
+        keys = continua.keys()
         _continua = {key: [] for key in keys}
         for ds in self:
             for key in keys:
@@ -666,6 +744,11 @@ class LegolasDataSeries(LegolasDataContainer):
             for key in keys:
                 _params[key].append(ds.parameters[key])
         return {key: np.array(values) for key, values in _params.items()}
+
+    @property
+    def has_background(self) -> np.ndarray:
+        """Returns `True` if background is present."""
+        return np.array([ds.has_background for ds in self.datasets], dtype=bool)
 
     @property
     def has_efs(self) -> np.ndarray:
@@ -818,3 +901,23 @@ class LegolasDataSeries(LegolasDataContainer):
             squared wavenumber for each.
         """
         return np.array([ds.get_k0_squared() for ds in self.datasets], dtype=float)
+
+    def get_omega_max(self, real=True):
+        """
+        Calculates the maximum of the real or imaginary part of the spectrum for
+        the various datasets.
+
+        Parameters
+        ----------
+        real : bool
+            Returns the largest real part if True (default option),
+            returns the largest imaginary part if False.
+
+        Returns
+        -------
+        omega_max : numpy.ndarray
+            A Numpy array of same length as the number of datasets, containing tuples
+            of the eigenvalue that has the largest real or imaginary part.
+        """
+
+        return np.array([ds.get_omega_max(real) for ds in self.datasets])

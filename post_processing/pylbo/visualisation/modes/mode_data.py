@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import difflib
-from typing import List, Union
+from typing import Union
 
 import numpy as np
 from pylbo.data_containers import LegolasDataSet
+from pylbo.exceptions import BackgroundNotPresent
 from pylbo.utilities.logger import pylboLogger
 from pylbo.visualisation.utils import ef_name_to_latex, validate_ef_name
 
@@ -56,12 +57,14 @@ class ModeVisualisationData:
         self.ds = ds
         self.use_real_part = use_real_part
         self.complex_factor = self._validate_complex_factor(complex_factor)
+        if add_background and not ds.has_background:
+            raise BackgroundNotPresent(ds.datfile, "add background to solution")
         self.add_background = add_background
         self._print_bg_info = True
 
         self._ef_name = None if ef_name is None else validate_ef_name(ds, ef_name)
         self._ef_name_latex = None if ef_name is None else self.get_ef_name_latex()
-        self._all_efs = self._get_all_efs(ds, omega)
+        self._all_efs = ds.get_eigenfunctions(ev_guesses=omega)
         self.omega = [all_efs.get("eigenvalue") for all_efs in self._all_efs]
         self.eigenfunction = [all_efs.get(self._ef_name) for all_efs in self._all_efs]
 
@@ -82,43 +85,6 @@ class ModeVisualisationData:
         'real' or 'imag'.
         """
         return "real" if self.use_real_part else "imag"
-
-    def _get_all_efs(self, ds: LegolasDataSet, omega: List[complex]) -> np.ndarray:
-        """
-        Returns an array of dicts with all eigenfunctions for every eigenvalue.
-        The dictionaries will be updated with the derived eigenfunctions if they
-        are available in the dataset.
-
-        Parameters
-        ----------
-        ds : ~pylbo.data_containers.LegolasDataSet
-            The dataset containing the eigenfunctions.
-        omega : list[complex]
-            The (approximate) eigenvalue(s) of the mode(s) to retrieve the
-            eigenfunctions from.
-
-        Returns
-        -------
-        np.ndarray
-            An array of dicts with all eigenfunctions for every eigenvalue.
-        """
-        arr1 = ds.get_eigenfunctions(omega)
-        if not ds.has_derived_efs:
-            return arr1
-
-        arr2 = ds.get_derived_eigenfunctions(omega)
-        arr = np.empty(len(omega), dtype=dict)
-        for i, (dict1, dict2) in enumerate(zip(arr1, arr2)):
-            ev1 = dict1.get("eigenvalue")
-            ev2 = dict2.get("eigenvalue")
-            if not np.isclose(ev1, ev2, atol=1e-12):
-                pylboLogger.warning(
-                    f"The eigenvalue of the eigenfunction {ev1:.6e} and the derived "
-                    f"eigenfunction {ev2:.6e} do not match. Using eigenfunctions only."
-                )
-                return arr1
-            arr[i] = {**dict1, **dict2}
-        return arr
 
     def get_ef_name_latex(self) -> str:
         """Returns the latex representation of the eigenfunction name."""

@@ -8,15 +8,21 @@
 !! KU Leuven, Belgium.
 program legolas
   use mod_global_variables, only: dp, str_len, initialise_globals
-  use mod_matrix_structure, only: matrix_t
+  use mod_matrix_structure, only: matrix_t, new_matrix
+  use mod_equilibrium, only: set_equilibrium
+  use mod_inspections, only: do_equilibrium_inspections
   use mod_matrix_manager, only: build_matrices
   use mod_solvers, only: solve_evp
   use mod_output, only: datfile_path, create_datfile
   use mod_logging, only: logger, str
-  use mod_console, only: print_console_info, print_whitespace
+  use mod_console, only: print_logo, print_startup_info, print_console_info, &
+    print_whitespace
   use mod_timing, only: timer_t, new_timer
   use mod_settings, only: settings_t, new_settings
+  use mod_background, only: background_t, new_background
+  use mod_grid, only: grid_t, new_grid
   use mod_eigenfunctions, only: eigenfunctions_t, new_eigenfunctions
+  use mod_physics, only: physics_t, new_physics
   implicit none
 
   !> A matrix in eigenvalue problem wBX = AX
@@ -27,7 +33,10 @@ program legolas
   type(timer_t) :: timer
   !> dedicated settings type
   type(settings_t) :: settings
+  type(grid_t) :: grid
+  type(background_t) :: background
   type(eigenfunctions_t) :: eigenfunctions
+  type(physics_t) :: physics
   !> array with eigenvalues
   complex(dp), allocatable  :: omega(:)
   !> matrix with right eigenvectors, column indices correspond to omega indices
@@ -40,28 +49,50 @@ program legolas
   settings = new_settings()
 
   call timer%start_timer()
-  call initialisation()
+
+  call read_user_parfile()
+  call print_logo()
+  call print_startup_info(settings)
+
+  grid = new_grid(settings)
+  background = new_background()
+  physics = new_physics(settings, background)
+
+  call set_equilibrium(settings, grid, background, physics)
   timer%init_time = timer%end_timer()
 
   call print_console_info(settings)
+  call do_equilibrium_inspections(settings, grid, background, physics)
 
   call timer%start_timer()
-  call build_matrices(matrix_B, matrix_A, settings)
+  matrix_A = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="A")
+  matrix_B = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="B")
+  call build_matrices(matrix_B, matrix_A, settings, grid, background, physics)
   timer%matrix_time = timer%end_timer()
 
   call logger%info("solving eigenvalue problem...")
   call timer%start_timer()
+  call do_eigenvalue_problem_allocations()
   call solve_evp(matrix_A, matrix_B, settings, omega, right_eigenvectors)
   timer%evp_time = timer%end_timer()
+  call logger%info("done.")
 
   call timer%start_timer()
-  eigenfunctions = new_eigenfunctions(settings)
+  eigenfunctions = new_eigenfunctions(settings, grid, background)
   call get_eigenfunctions()
   timer%eigenfunction_time = timer%end_timer()
 
   call timer%start_timer()
   call create_datfile( &
-    settings, omega, matrix_A, matrix_B, right_eigenvectors, eigenfunctions &
+    settings, &
+    grid, &
+    background, &
+    physics, &
+    omega, &
+    matrix_A, &
+    matrix_B, &
+    right_eigenvectors, &
+    eigenfunctions &
   )
   timer%datfile_time = timer%end_timer()
 
@@ -76,28 +107,16 @@ program legolas
 
 contains
 
-  !> Subroutine responsible for all initialisations.
-  !! Allocates and initialises main and global variables, then the equilibrium state
-  !! and eigenfunctions are initialised and the equilibrium is set.
-  subroutine initialisation()
-    use mod_global_variables, only: NaN
-    use mod_matrix_structure, only: new_matrix
-    use mod_input, only: read_parfile, get_parfile
-    use mod_equilibrium, only: initialise_equilibrium, set_equilibrium, hall_field
-    use mod_console, only: print_logo
-
-    character(len=5*str_len)  :: parfile
-    integer   :: nb_evs
-
-    real(dp) :: ratio
-    ratio = NaN
-
+  subroutine read_user_parfile()
+    use mod_input, only: get_parfile, read_parfile
+    character(len=5*str_len) :: parfile
     call get_parfile(parfile)
     call read_parfile(parfile, settings)
+  end subroutine read_user_parfile
 
-    call print_logo()
-    call logger%info("the physics type is " // settings%get_physics_type())
-    call logger%info("the state vector is " // str(settings%get_state_vector()))
+
+  subroutine do_eigenvalue_problem_allocations()
+    integer :: nb_evs
 
     select case(settings%solvers%get_solver())
     case ("arnoldi")
@@ -107,22 +126,8 @@ contains
     case default
       nb_evs = settings%dims%get_dim_matrix()
     end select
-    call logger%debug("setting #eigenvalues to " // str(nb_evs))
+    call logger%debug("allocating eigenvalue array of size " // str(nb_evs))
     allocate(omega(nb_evs))
-    matrix_A = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="A")
-    matrix_B = new_matrix(nb_rows=settings%dims%get_dim_matrix(), label="B")
-
-    call initialise_equilibrium(settings)
-    call set_equilibrium(settings)
-
-    if (settings%physics%hall%is_enabled()) then
-      ratio = maxval(hall_field % hallfactor) / ( &
-        settings%grid%get_grid_end() - settings%grid%get_grid_start() &
-      )
-      if (ratio > 0.1d0) then
-        call logger%warning("large ratio Hall scale / system scale: " // str(ratio))
-      end if
-    end if
 
     ! Arnoldi solver needs this, since it always calculates an orthonormal basis
     if ( &
@@ -139,7 +144,7 @@ contains
       call logger%debug("allocating eigenvector arrays as dummy")
       allocate(right_eigenvectors(2, 2))
     end if
-  end subroutine initialisation
+  end subroutine do_eigenvalue_problem_allocations
 
 
   !> Initialises and calculates the eigenfunctions if requested.
@@ -153,25 +158,16 @@ contains
   !> Deallocates all main variables, then calls the cleanup
   !! routines of all relevant subroutines to do the same thing.
   subroutine cleanup()
-    use mod_grid, only: grid_clean
-    use mod_equilibrium, only: equilibrium_clean
-    use mod_radiative_cooling, only: radiative_cooling_clean
+    deallocate(omega)
+    if (allocated(right_eigenvectors)) deallocate(right_eigenvectors)
 
     call matrix_A%delete_matrix()
     call matrix_B%delete_matrix()
-    deallocate(omega)
-    if (allocated(right_eigenvectors)) then
-      deallocate(right_eigenvectors)
-    end if
-
-    call grid_clean()
-    call equilibrium_clean()
-
-    if (settings%physics%cooling%is_enabled()) then
-      call radiative_cooling_clean()
-    end if
-    call settings%delete()
     call eigenfunctions%delete()
+    call physics%delete()
+    call grid%delete()
+    call background%delete()
+    call settings%delete()
   end subroutine cleanup
 
 

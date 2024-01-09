@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os import PathLike
 from typing import BinaryIO
 
@@ -13,7 +15,7 @@ from pylbo.utilities.datfiles.istream_reader import (
     read_string_from_istream,
 )
 from pylbo.utilities.logger import pylboLogger
-from pylbo.utilities.toolbox import transform_to_list
+from pylbo.utilities.toolbox import transform_to_list, transform_to_numpy
 
 
 class LegolasFileReader:
@@ -44,9 +46,8 @@ class LegolasFileReader:
             istream.seek(self._offset)
             if self.legolas_version < "2.0":
                 return LegolasLegacyHeader(istream, self.legolas_version)
-            elif self.legolas_version >= "2.0":
+            else:
                 return LegolasHeader(istream, self.legolas_version)
-        return None
 
     def read_grid(self, header: LegolasHeader) -> np.ndarray:
         with open(self.datfile, "rb") as istream:
@@ -184,6 +185,7 @@ class LegolasFileReader:
         ef_index: int,
         state_vector: np.ndarray,
     ) -> dict:
+        state_vector = transform_to_numpy(state_vector)
         eigenfunctions = {}
         with open(self.datfile, "rb") as istream:
             for name_idx, name in enumerate(state_vector):
