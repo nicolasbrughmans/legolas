@@ -386,7 +386,7 @@ def calculate_wcom(ds, index, return_ev=False):
     incompressible = False
     if gamma > 1e6: incompressible = True
 
-
+    ### Are the gradients here okay??? I don't think they should be there.....
     ### The crucial eigenfunctions: 
     chi = r_ef* (-vr_ef / (1j*omegatilde))
     ksi_theta = vr_ef * (gradv02 - Omega)/omegatilde**2 - vtheta_ef / (omegatilde*1j)
