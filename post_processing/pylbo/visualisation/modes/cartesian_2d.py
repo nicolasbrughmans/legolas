@@ -63,6 +63,7 @@ class CartesianSlicePlot2D(ModeFigure):
         self._use_contour_plot = False
         self._contour_levels = None
         self._contour_recipe = None
+        self._view_dot = None
         super().__init__(figsize, data, show_ef_panel)
 
         self.vmin = np.min(self._solutions)
@@ -234,6 +235,8 @@ class CartesianSlicePlot2D(ModeFigure):
                     self._update_view_clims(solution)
                 else:
                     self._update_view_clims(initial_solution)
+                if self.data.ds.header["physics"]["flow"]:
+                    self._draw_comoving_dot(t)
                 self._set_t_txt(t)
                 writer.grab_frame()
 
@@ -249,6 +252,31 @@ class CartesianSlicePlot2D(ModeFigure):
             return
         txt = self.u2u3_txt.get_text().split("|")[0]
         self.u2u3_txt.set_text(f"{txt}| t = {t:.2f}")
+
+    def _draw_comoving_dot(self, t):
+        """
+        Overplots the data in an animation with a red dot that is comoving with the flow.
+
+        Parameters
+        ----------
+        t : float
+            The current time.
+
+        """
+        dotcolor = "red"
+        x0 = 0.0
+
+        yloc = np.mean(self.ax.get_ylim())
+        if self.data.ds.geometry == "Cartesian":
+            scaling = 1.0
+        else:
+            scaling = yloc
+        xloc = x0 + t * np.interp(yloc, self.data.ds.grid_gauss, self.data.ds.equilibria["v02"]) / scaling
+        while xloc > np.max(self.u2_data): #for periodic reappearance
+            xloc -= np.max(self.u2_data)
+        if self._view_dot is not None:
+            self._view_dot.remove()
+        self._view_dot = self.ax.scatter(xloc, yloc, marker='o', c=dotcolor)
 
     def _update_view(self, updated_solution: np.ndarray) -> None:
         """
