@@ -62,6 +62,7 @@ class ModeFigure(FigureWindow):
         self._cbar_hspace = 0.01
         self._show_ef_panel = show_ef_panel
         self._annotate = True
+        self._multiple_wavenumbers = False
 
         if figsize is None:
             figsize = (14, 8)
@@ -224,7 +225,9 @@ class ModeFigure(FigureWindow):
     def draw_textboxes(self) -> None:
         u2u3ax = self.axes.get("eigfunc", None) or self.ax
         self.add_u2u3_txt(u2u3ax, loc="top right", outside=True)
-        self.add_k2k3_txt(self.ax, loc="bottom left", color="white", alpha=0.5)
+        print(self._multiple_wavenumbers)
+        if not self._multiple_wavenumbers:
+            self.add_k2k3_txt(self.ax, loc="bottom left", color="white", alpha=0.5)
 
     def draw_eigenfunction(self) -> None:
         """Draws the eigenfunction(s) to the figure."""
