@@ -225,7 +225,6 @@ class ModeFigure(FigureWindow):
     def draw_textboxes(self) -> None:
         u2u3ax = self.axes.get("eigfunc", None) or self.ax
         self.add_u2u3_txt(u2u3ax, loc="top right", outside=True)
-        print(self._multiple_wavenumbers)
         if not self._multiple_wavenumbers:
             self.add_k2k3_txt(self.ax, loc="bottom left", color="white", alpha=0.5)
 
