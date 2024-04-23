@@ -266,14 +266,17 @@ class CartesianSlicePlot2D(ModeFigure):
         dotcolor = "red"
         x0 = 0.0
 
-        yloc = np.mean(self.ax.get_ylim())
+        ymin = max(self.data.ds.x_start, min(self.ax.get_ylim()))
+        ymax = min(self.data.ds.x_end, max(self.ax.get_ylim()))
+        yloc = np.linspace(ymin, ymax, 20)
         if self.data.ds.geometry == "Cartesian":
             scaling = 1.0
         else:
             scaling = yloc
         xloc = x0 + t * np.interp(yloc, self.data.ds.grid_gauss, self.data.ds.equilibria["v02"]) / scaling
-        while xloc > np.max(self.u2_data): #for periodic reappearance
-            xloc -= np.max(self.u2_data)
+        for i in range(len(xloc)):
+            while xloc[i] > np.max(self.u2_data): #for periodic reappearance
+                xloc[i] -= np.max(self.u2_data)
         if self._view_dot is not None:
             self._view_dot.remove()
         self._view_dot = self.ax.scatter(xloc, yloc, marker='o', c=dotcolor)

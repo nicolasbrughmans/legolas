@@ -61,7 +61,7 @@ class ModeVisualisationData:
         if add_background and not self.ds_bg.has_background:
             raise BackgroundNotPresent(self.ds_bg.datfile, "add background to solution")
         self.add_background = add_background
-        self._print_bg_info = True
+        self._print_bg_info = False
 
         self._ef_name = None if ef_name is None else validate_ef_name(ds, ef_name)
         self._ef_name_latex = None if ef_name is None else self.get_ef_name_latex()
