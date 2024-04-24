@@ -236,7 +236,7 @@ class CartesianSlicePlot2D(ModeFigure):
                     self._update_view_clims(solution)
                 else:
                     self._update_view_clims(initial_solution)
-                if self.data.ds_bg.header["physics"]["flow"]:
+                if self.data.ds_bg.header["physics"]["flow"] and self.slicing_axis==self._u3axis:
                     self._draw_comoving_dot(t)
                 self._set_t_txt(t)
                 writer.grab_frame()
@@ -256,7 +256,7 @@ class CartesianSlicePlot2D(ModeFigure):
 
     def _draw_comoving_dot(self, t):
         """
-        Overplots the data in an animation with a red dot that is comoving with the flow.
+        Overplots the data in an animation with red dots that are comoving with the flow.
 
         Parameters
         ----------
