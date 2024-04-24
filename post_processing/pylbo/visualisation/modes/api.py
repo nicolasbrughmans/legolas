@@ -173,8 +173,8 @@ def plot_2d_slice(
 
 
 def plot_3d_slice(
-    ds: LegolasDataSet,
-    omega: Union[complex, list[complex], np.ndarray],
+    ds: Union[LegolasDataSet, LegolasDataSeries],
+    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
     ef_name: str,
     u2: Union[float, np.ndarray],
     u3: Union[float, np.ndarray],
@@ -197,10 +197,10 @@ def plot_3d_slice(
 
     Parameters
     ----------
-    ds : LegolasDataSet
-        The data set containing the eigenfunction.
-    omega : complex, list[complex], np.ndarray
-        The (approximate) eigenvalue of the mode(s) to visualise.
+    ds : LegolasDataSet, LegolasDataSeries
+        The data set/series containing the eigenfunctions, having the same equilibria.
+    omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
     ef_name : str
         The name of the eigenfunction to visualise.
     u2 : float, np.ndarray
@@ -227,8 +227,9 @@ def plot_3d_slice(
     p : CartesianSlicePlot3D or CylindricalSlicePlot3D
         The plot object.
     """
-    ensure_dataset(ds)
-    omega = transform_to_list(omega)
+    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    ds = transform_to_dataseries(ds)
+    omega = _handle_expected_input_omega(ds, omega)
     u3 = transform_to_numpy(u3)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
@@ -241,8 +242,8 @@ def plot_3d_slice(
 
 
 def prepare_vtk_export(
-    ds: LegolasDataSet,
-    omega: Union[complex, list[complex], np.ndarray],
+    ds: Union[LegolasDataSet,LegolasDataSeries],
+    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
     u2: np.ndarray,
     u3: np.ndarray,
     use_real_part: bool = True,
@@ -254,10 +255,10 @@ def prepare_vtk_export(
 
     Parameters
     ----------
-    ds : LegolasDataSet
-        The data set containing the eigenfunction.
-    omega : complex, list[complex], np.ndarray
-        The (approximate) eigenvalue of the mode(s) to visualise.
+    ds : LegolasDataSet, LegolasDataSeries
+        The data set/series containing the eigenfunctions, having the same equilibria.
+    omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
     u2 : np.ndarray
         The y or :math:`\\theta` coordinates of the eigenmode solution.
     u3 : np.ndarray
@@ -270,8 +271,9 @@ def prepare_vtk_export(
     VTKCartesianData or VTKCylindricalData
         Object that can be used to generate VTK files.
     """
-    ensure_dataset(ds)
-    omega = transform_to_list(omega)
+    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    ds = transform_to_dataseries(ds)
+    omega = _handle_expected_input_omega(ds, omega)
     data = ModeVisualisationData(
         ds, omega, None, use_real_part, complex_factor, add_background=False
     )
