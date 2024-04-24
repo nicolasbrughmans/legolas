@@ -48,13 +48,13 @@ class CartesianSlicePlot2D(ModeFigure):
         **kwargs,
     ) -> None:
         for i in "123":
-            _axis = getattr(data.ds, f"u{i}_str")
+            _axis = getattr(data.ds_bg, f"u{i}_str")
             setattr(self, f"_u{i}axis", _axis.replace("$", "").replace("\\", ""))
         self.slicing_axis = self._validate_slicing_axis(
             slicing_axis, allowed_axes=[self._u2axis, self._u3axis]
         )
         self.update_colorbar = True
-        self._u1 = data.ds.ef_grid
+        self._u1 = data.ds_bg.ef_grid
         self._u2 = self._validate_u2(u2, slicing_axis, axis=self._u2axis)
         self._u3 = self._validate_u3(u3, slicing_axis, axis=self._u3axis)
         self._time = self._check_if_number(time, "time")
@@ -137,10 +137,11 @@ class CartesianSlicePlot2D(ModeFigure):
         axis = self.slicing_axis
         coord = self._u2 if axis == self._u3axis else self._u3
         self.solution_shape = (len(self._u1), len(coord))
-        for ef, omega in zip(self.data.eigenfunction, self.data.omega):
-            data = np.broadcast_to(ef, shape=reversed(self.solution_shape)).transpose()
-            self.ef_data.append({"ef": data, "omega": omega})
-        x_2d, coord_2d = np.meshgrid(self.data.ds.ef_grid, coord, indexing="ij")
+        for efs, omegas, k2, k3 in zip(self.data.eigenfunction, self.data.omega, self.data.k2, self.data.k3):
+            for ef, omega in zip(efs, omegas):
+                data = np.broadcast_to(ef, shape=reversed(self.solution_shape)).transpose()
+                self.ef_data.append({"ef": data, "omega": omega, "k2": k2, "k3": k3})
+        x_2d, coord_2d = np.meshgrid(self.data.ds_bg.ef_grid, coord, indexing="ij")
 
         self.u1_data = x_2d
         self.u2_data = coord_2d if axis == self._u3axis else self._u2
@@ -149,9 +150,9 @@ class CartesianSlicePlot2D(ModeFigure):
 
     def add_u2u3_txt(self, ax, **kwargs) -> None:
         if self.slicing_axis == self._u3axis:
-            txt = rf"{self.data.ds.u3_str} = {self._u3}"
+            txt = rf"{self.data.ds_bg.u3_str} = {self._u3}"
         else:
-            txt = rf"{self.data.ds.u2_str} = {self._u2}"
+            txt = rf"{self.data.ds_bg.u2_str} = {self._u2}"
         txt = rf"{txt} | t = {self._time:.2f}"
         self.u2u3_txt = add_axis_label(ax, txt, **kwargs)
 
@@ -208,9 +209,9 @@ class CartesianSlicePlot2D(ModeFigure):
 
     def get_view_ylabel(self) -> str:
         return (
-            self.data.ds.u2_str
+            self.data.ds_bg.u2_str
             if self.slicing_axis == self._u3axis
-            else self.data.ds.u3_str
+            else self.data.ds_bg.u3_str
         )
 
     def create_animation(
@@ -235,7 +236,7 @@ class CartesianSlicePlot2D(ModeFigure):
                     self._update_view_clims(solution)
                 else:
                     self._update_view_clims(initial_solution)
-                if self.data.ds.header["physics"]["flow"]:
+                if self.data.ds_bg.header["physics"]["flow"]:
                     self._draw_comoving_dot(t)
                 self._set_t_txt(t)
                 writer.grab_frame()
@@ -266,20 +267,26 @@ class CartesianSlicePlot2D(ModeFigure):
         dotcolor = "red"
         x0 = 0.0
 
-        ymin = max(self.data.ds.x_start, min(self.ax.get_ylim()))
-        ymax = min(self.data.ds.x_end, max(self.ax.get_ylim()))
-        yloc = np.linspace(ymin, ymax, 20)
-        if self.data.ds.geometry == "Cartesian":
-            scaling = 1.0
-        else:
+        ymin = max(self.data.ds_bg.x_start, min(self.ax.get_xlim()))
+        ymax = min(self.data.ds_bg.x_end, max(self.ax.get_xlim()))
+        scaling = 1.0
+        yloc = np.linspace(ymin, ymax, 22)[1:-1]
+        if self.data.ds.geometry == "cylindrical":
+            ymin = max(self.data.ds_bg.x_start, min(self.ax.get_ylim()))
+            ymax = min(self.data.ds_bg.x_end, max(self.ax.get_ylim()))
+            yloc = np.linspace(ymin, ymax, 22)[1:-1]
             scaling = yloc
-        xloc = x0 + t * np.interp(yloc, self.data.ds.grid_gauss, self.data.ds.equilibria["v02"]) / scaling
+        
+        xloc = x0 + t * np.interp(yloc, self.data.ds_bg.grid_gauss, self.data.ds_bg.equilibria["v02"]) / scaling
         for i in range(len(xloc)):
             while xloc[i] > np.max(self.u2_data): #for periodic reappearance
                 xloc[i] -= np.max(self.u2_data)
         if self._view_dot is not None:
             self._view_dot.remove()
-        self._view_dot = self.ax.scatter(xloc, yloc, marker='o', c=dotcolor)
+        if self.ax.name == "polar":
+            self._view_dot = self.ax.scatter(xloc, yloc, marker='o', c=dotcolor)
+        else:
+            self._view_dot = self.ax.scatter(yloc, xloc, marker='o', c=dotcolor)
 
     def _update_view(self, updated_solution: np.ndarray) -> None:
         """

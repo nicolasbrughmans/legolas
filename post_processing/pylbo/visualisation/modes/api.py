@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Union
 
 import numpy as np
-from pylbo.data_containers import LegolasDataSet, ensure_dataset
+from pylbo.data_containers import LegolasDataSet, LegolasDataSeries, ensure_dataset, transform_to_dataseries
 from pylbo.utilities.toolbox import transform_to_list, transform_to_numpy
 from pylbo.visualisation.modes.cartesian_2d import CartesianSlicePlot2D
 from pylbo.visualisation.modes.cartesian_3d import CartesianSlicePlot3D
@@ -13,10 +13,20 @@ from pylbo.visualisation.modes.mode_data import ModeVisualisationData
 from pylbo.visualisation.modes.temporal_1d import TemporalEvolutionPlot1D
 from pylbo.visualisation.modes.vtk_export import VTKCartesianData, VTKCylindricalData
 
+def _handle_expected_input_omega(ds : LegolasDataSeries, omega) -> list[list[complex]]:
+    omega_temp = transform_to_list(omega)
+    if len(ds) == 1: return([omega_temp])
+    if len(ds) > 1:
+        if len(ds) != len(omega_temp): 
+            raise ValueError("Need as many omegas (or lists of omegas) as datasets.")
+        else:
+            for i, omega_val in enumerate(omega_temp):
+                omega_temp[i] = transform_to_list(omega_val)
+    return omega_temp
 
 def plot_1d_temporal_evolution(
-    ds: LegolasDataSet,
-    omega: Union[complex, list[complex], np.ndarray],
+    ds: Union[LegolasDataSet, LegolasDataSeries],
+    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
     ef_name: str,
     u2: float,
     u3: float,
@@ -38,10 +48,10 @@ def plot_1d_temporal_evolution(
 
     Parameters
     ----------
-    ds : LegolasDataSet
-        The data set containing the eigenfunction.
-    omega : complex, list[complex], np.ndarray
-        The (approximate) eigenvalue of the mode(s) to visualise.
+    ds : LegolasDataSet, LegolasDataSeries
+        The data set/series containing the eigenfunctions, having the same equilibria.
+    omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
     ef_name : str
         The name of the eigenfunction to visualise.
     u2 : float
@@ -68,8 +78,9 @@ def plot_1d_temporal_evolution(
     TemporalEvolutionPlot1D
         The plot object.
     """
-    ensure_dataset(ds)
-    omega = transform_to_list(omega)
+    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    ds = transform_to_dataseries(ds)
+    omega = _handle_expected_input_omega(ds, omega)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
     )
@@ -80,8 +91,8 @@ def plot_1d_temporal_evolution(
 
 
 def plot_2d_slice(
-    ds: LegolasDataSet,
-    omega: Union[complex, list[complex], np.ndarray],
+    ds: Union[LegolasDataSet, LegolasDataSeries],
+    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
     ef_name: str,
     u2: Union[float, np.ndarray],
     u3: Union[float, np.ndarray],
@@ -109,10 +120,10 @@ def plot_2d_slice(
 
     Parameters
     ----------
-    ds : LegolasDataSet
-        The data set containing the eigenfunction.
-    omega : complex, list[complex], np.ndarray
-        The (approximate) eigenvalue of the mode(s) to visualise.
+    ds : LegolasDataSet, LegolasDataSeries
+        The data set/series containing the eigenfunctions, having the same equilibria.
+    omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
     ef_name : str
         The name of the eigenfunction to visualise.
     u2 : float, np.ndarray
@@ -144,12 +155,13 @@ def plot_2d_slice(
     p : CartesianSlicePlot2D or CylindricalSlicePlot2D
         The plot object.
     """
-    ensure_dataset(ds)
-    omega = transform_to_list(omega)
+    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    ds = transform_to_dataseries(ds)
+    omega = _handle_expected_input_omega(ds, omega)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
     )
-    if ds.geometry == "Cartesian":
+    if not polar or ds.geometry=="Cartesian":
         p = CartesianSlicePlot2D(
             data, u2, u3, time, slicing_axis, figsize, show_ef_panel, **kwargs
         )

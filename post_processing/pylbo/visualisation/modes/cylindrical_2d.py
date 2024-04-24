@@ -60,10 +60,11 @@ class CylindricalSlicePlot2D(CartesianSlicePlot2D):
         if self.slicing_axis == self._u2axis:
             return super().set_plot_arrays()
         self.solution_shape = (len(self._u1), len(self._u2))
-        for ef, omega in zip(self.data.eigenfunction, self.data.omega):
-            data = np.broadcast_to(ef, shape=reversed(self.solution_shape)).transpose()
-            self.ef_data.append({"ef": data, "omega": omega})
-        r_2d, theta_2d = np.meshgrid(self.data.ds.ef_grid, self._u2, indexing="ij")
+        for efs, omegas, k2, k3 in zip(self.data.eigenfunction, self.data.omega, self.data.k2, self.data.k3):
+            for ef, omega in zip(efs, omegas):
+                data = np.broadcast_to(ef, shape=reversed(self.solution_shape)).transpose()
+                self.ef_data.append({"ef": data, "omega": omega, "k2": k2, "k3": k3})
+        r_2d, theta_2d = np.meshgrid(self.data.ds_bg.ef_grid, self._u2, indexing="ij")
 
         self.u1_data = r_2d
         self.u2_data = theta_2d
@@ -119,7 +120,7 @@ class CylindricalSlicePlot2D(CartesianSlicePlot2D):
     def draw_eigenfunction(self) -> None:
         super().draw_eigenfunction()
         if self._show_ef_panel:
-            self.axes["eigfunc"].set_xlabel(self.data.ds.u1_str)
+            self.axes["eigfunc"].set_xlabel(self.data.ds_bg.u1_str)
 
     def get_view_xlabel(self) -> str:
         if self._use_polar_axes:
