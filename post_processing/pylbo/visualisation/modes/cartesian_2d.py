@@ -8,6 +8,7 @@ from matplotlib.cm import ScalarMappable
 from pylbo.utilities.toolbox import transform_to_list
 from pylbo.visualisation.modes.mode_data import ModeVisualisationData
 from pylbo.visualisation.modes.mode_figure import ModeFigure
+from pylbo.visualisation.modes.streamline_handler import StreamlineHandler
 from pylbo.visualisation.utils import add_axis_label
 from tqdm import tqdm
 
@@ -64,10 +65,15 @@ class CartesianSlicePlot2D(ModeFigure):
         self._contour_levels = None
         self._contour_recipe = None
         self._view_dot = None
+        self._has_streamlines = False
         super().__init__(figsize, data, show_ef_panel)
 
         self.vmin = np.min(self._solutions)
         self.vmax = np.max(self._solutions)
+        self.xmin = np.min(self.data.ds.ef_grid) if self.ax.name!="polar" else 0.0
+        self.xmax = np.max(self.data.ds.ef_grid)
+        self.coordmin = np.min(self._u2) if self.slicing_axis == self._u3axis else np.min(self._u3)
+        self.coordmax = np.max(self._u2) if self.slicing_axis == self._u3axis else np.max(self._u3)
 
     def _validate_slicing_axis(self, slicing_axis: str, allowed_axes: list[str]) -> str:
         """
@@ -231,6 +237,7 @@ class CartesianSlicePlot2D(ModeFigure):
                     )
                 if self.data.add_background:
                     solution += self.data.get_background(shape=self._solutions.shape)
+                self.time_data = t
                 self._update_view(updated_solution=solution)
                 if self.update_colorbar:
                     self._update_view_clims(solution)
@@ -243,6 +250,7 @@ class CartesianSlicePlot2D(ModeFigure):
 
                 pbar.update()
         self._solutions = initial_solution
+        self.time_data = self._time
 
     def _ensure_first_frame_is_drawn(self) -> None:
         if None in transform_to_list(self._view):
@@ -303,6 +311,8 @@ class CartesianSlicePlot2D(ModeFigure):
             self._update_contour_plot(updated_solution)
         else:
             self._view.set_array(updated_solution.ravel())
+        if self._has_streamlines: 
+            self.update_streamlines()
 
     def _update_view_clims(self, solution: np.ndarray) -> None:
         self.vmin, self.vmax = np.min(solution), np.max(solution)
@@ -322,3 +332,33 @@ class CartesianSlicePlot2D(ModeFigure):
         self._solutions = updated_solution
         self.draw_solution()
         self.add_axes_labels()
+
+
+    def add_streamlines(self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs) -> None:
+        self.draw()
+        self.sl_handler = self.create_streamplot(xgrid=xgrid, coordgrid=coordgrid, **kwargs)
+        self.update_streamlines()
+
+    def create_streamplot(self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs) -> StreamlineHandler:
+        self._has_streamlines = True
+
+        if xgrid is None: xgrid = self.data.ds_bg.ef_grid
+        if coordgrid is None: 
+            coordgrid = self._u2 if self.slicing_axis == self._u3axis else self._u3
+
+        streamline_data = ModeVisualisationData(self.data.ds, self.data.omega, None, self.data.use_real_part, self.data.complex_factor, self.data.add_background)
+
+        sl_handler = StreamlineHandler(xgrid=xgrid, coordgrid=coordgrid, field=field, data=streamline_data, axes=self.ax, add_background=add_background, **kwargs)
+        sl_handler.set_slicing_axis(self.slicing_axis, self._u2axis, self._u3axis)
+        sl_handler.set_streamplot_arrays(u2=self.u2_data, u3=self.u3_data)
+        return sl_handler
+
+    def update_streamlines(self) -> None:
+        self.sl_handler._clear_streamlines()
+        self.sl_handler.set_time(self.time_data)
+        self.sl_handler.set_solutions()
+        self.sl_handler.draw_streamlines()
+        xlims = (self.xmin, self.xmax) if not self.sl_handler.polar else (self.coordmin, self.coordmax)
+        ylims = (self.coordmin, self.coordmax) if not self.sl_handler.polar else (self.xmin, self.xmax)
+        self.ax.set_xlim(xlims)
+        self.ax.set_ylim(ylims)
