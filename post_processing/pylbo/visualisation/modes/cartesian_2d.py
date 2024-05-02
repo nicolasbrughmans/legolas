@@ -276,8 +276,12 @@ class CartesianSlicePlot2D(ModeFigure):
         dotcolor = "red"
         x0 = 0.0
 
-        ymin = max(self.data.ds_bg.x_start, min(self.ax.get_xlim()))
-        ymax = min(self.data.ds_bg.x_end, max(self.ax.get_xlim()))
+        if not self.ax.name == "polar":
+            lims = self.ax.get_xlim()
+        else:
+            lims = self.ax.get_ylim()
+        ymin = max(self.data.ds_bg.x_start, min(lims))
+        ymax = min(self.data.ds_bg.x_end, max(lims))
         scaling = 1.0
         yloc = np.linspace(ymin, ymax, 22)[1:-1]
         if self.data.ds.geometry == "cylindrical":
