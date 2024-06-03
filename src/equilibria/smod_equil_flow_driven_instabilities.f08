@@ -53,9 +53,11 @@ contains
 
   real(dp) function dT0(x)
     real(dp), intent(in) :: x
-    dT0 = ( &
-      -g * cte_rho0 * (1.0_dp - delta * x)**2 + cte_rho0 * delta * p_prof(x) &
-    ) / rho0(x)**2
+    ! dT0 = ( &
+    !   -g * (1.0_dp - delta * x) * rho0(x) - drho0() * p_prof(x) &
+    ! ) / rho0(x)**2
+
+    dT0 = -g + delta * T0(x) / rho0(x)
   end function dT0
 
   real(dp) function v02(x)
