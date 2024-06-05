@@ -6,65 +6,81 @@ from matplotlib.quiver import Quiver
 from matplotlib.cm import binary
 from pylbo.visualisation.modes.mode_data import ModeVisualisationData
 
+
 class VectorplotHandler:
     """
     Main handler for vector-based fields (Streamlines and Quiver).
     """
 
     def __init__(
-            self, 
-            xgrid : np.ndarray, 
-            coordgrid : np.ndarray, 
-            field : str, 
-            data : ModeVisualisationData, 
-            axes : mpl_axes, 
-            add_background : bool,
-            **kwargs
-            ):
-        
+        self,
+        xgrid: np.ndarray,
+        coordgrid: np.ndarray,
+        field: str,
+        data: ModeVisualisationData,
+        axes: mpl_axes,
+        add_background: bool,
+        **kwargs
+    ):
+
         self.xgrid = xgrid
         self.coordgrid = coordgrid
         self.data = data
 
         self.field = field
         self.ax = axes
-        self.polar = (self.ax.name == "polar")
+        self.polar = self.ax.name == "polar"
         self.add_background = add_background
 
-        self.coord_dict = {"theta" : "3", "z" : "2", "y" : "3"}
+        self.coord_dict = {"theta": "3", "z": "2", "y": "3"}
         self.streamlines = None
         self.quivers = None
         self._kwargs = kwargs
 
     def _draw_streamlines(self) -> StreamplotSet:
 
-        if "density" not in self._kwargs.keys(): self._kwargs["density"] = 2.0
-        if "color" not in self._kwargs.keys(): self._kwargs["color"] = "w"
-        if "broken_streamlines" not in self._kwargs.keys(): self._kwargs["broken_streamlines"] = True
+        if "density" not in self._kwargs.keys():
+            self._kwargs["density"] = 2.0
+        if "color" not in self._kwargs.keys():
+            self._kwargs["color"] = "w"
+        if "broken_streamlines" not in self._kwargs.keys():
+            self._kwargs["broken_streamlines"] = True
 
         if self.polar:
             self.xvec = self._solutions[1]
             self.yvec = self._solutions[0]
 
         self._clear_streamlines()
-        self.streamlines = self.ax.streamplot(self.xdata, self.ydata, self.xvec, self.yvec, zorder=2, **self._kwargs)
+        self.streamlines = self.ax.streamplot(
+            self.xdata, self.ydata, self.xvec, self.yvec, zorder=2, **self._kwargs
+        )
         self.streamlines.lines.set_alpha(0.7)
         self.streamlines.arrows.set_alpha(0.7)
 
     def _draw_quivers(self) -> Quiver:
 
-        if "color" not in self._kwargs.keys(): self._kwargs["color"] = "w"
-        if "pivot" not in self._kwargs.keys(): self._kwargs["pivot"] = "mid"
-        if "units" not in self._kwargs.keys(): self._kwargs["units"] = "height"
-        if "scale" not in self._kwargs.keys(): self._kwargs["scale"] = 20
-        if "alpha" not in self._kwargs.keys(): self._kwargs["alpha"] = 0.7
-        if "width" not in self._kwargs.keys(): self._kwargs["width"] = 0.002
+        if "color" not in self._kwargs.keys():
+            self._kwargs["color"] = "w"
+        if "pivot" not in self._kwargs.keys():
+            self._kwargs["pivot"] = "mid"
+        if "units" not in self._kwargs.keys():
+            self._kwargs["units"] = "height"
+        if "scale" not in self._kwargs.keys():
+            self._kwargs["scale"] = 20
+        if "alpha" not in self._kwargs.keys():
+            self._kwargs["alpha"] = 0.7
+        if "width" not in self._kwargs.keys():
+            self._kwargs["width"] = 0.002
 
-        if self.polar: self._transform_vectors()
-        self.quivers = self.ax.quiver(self.xdata, self.ydata, self.xvec, self.yvec, zorder=2, **self._kwargs)
+        if self.polar:
+            self._transform_vectors()
+        self.quivers = self.ax.quiver(
+            self.xdata, self.ydata, self.xvec, self.yvec, zorder=2, **self._kwargs
+        )
 
     def _update_quivers(self) -> None:
-        if self.polar: self._transform_vectors()
+        if self.polar:
+            self._transform_vectors()
         self.quivers.set_UVC(self.xvec, self.yvec)
 
     def _clear_quivers(self) -> None:
@@ -78,7 +94,6 @@ class VectorplotHandler:
             self.streamlines.remove()
         except AttributeError:
             pass
-
 
     def _set_slicing_axis(self, slicing_axis, u2axis, u3axis) -> None:
         self.slicing_axis = slicing_axis
@@ -104,7 +119,6 @@ class VectorplotHandler:
         else:
             self.xdata = self.u1_data.transpose()
             self.ydata = self.coord_data.transpose()
-        
 
     def _set_solutions(self) -> np.ndarray:
         """
@@ -131,7 +145,9 @@ class VectorplotHandler:
                 for i in range(2):
                     ef = ef_highres.get(fields[i])
                     ef = np.interp(self.xgrid, self.data.ds_bg.ef_grid, ef)
-                    ef = np.broadcast_to(ef, shape=reversed(self.solution_shape)).transpose()
+                    ef = np.broadcast_to(
+                        ef, shape=reversed(self.solution_shape)
+                    ).transpose()
                     solutions[i] += self.data.get_mode_solution(
                         ef=ef,
                         omega=ef_highres.get("eigenvalue"),
@@ -139,34 +155,42 @@ class VectorplotHandler:
                         u3=self.u3_data,
                         t=self.time_data,
                         k2=k2,
-                        k3=k3
+                        k3=k3,
                     )
 
         if self.add_background:
             bgs = self._get_bg_names()
             for i in range(2):
-                bg_temp = self.data.get_background(name=bgs[i], shape=self.data.ds_bg.ef_grid.shape)
+                bg_temp = self.data.get_background(
+                    name=bgs[i], shape=self.data.ds_bg.ef_grid.shape
+                )
                 bg = np.interp(self.xgrid, self.data.ds_bg.ef_grid, bg_temp)
-                bg = np.broadcast_to(bg, shape=reversed(self.solution_shape)).transpose()
+                bg = np.broadcast_to(
+                    bg, shape=reversed(self.solution_shape)
+                ).transpose()
                 solutions[i] += bg
 
         self._solutions = solutions
 
-        norm = np.max(np.sqrt(self._solutions[0]**2 + self._solutions[1]**2))
-        self.xvec = (self._solutions[0]/norm).transpose()
-        self.yvec = (self._solutions[1]/norm).transpose()
-    
+        norm = np.max(np.sqrt(self._solutions[0] ** 2 + self._solutions[1] ** 2))
+        self.xvec = (self._solutions[0] / norm).transpose()
+        self.yvec = (self._solutions[1] / norm).transpose()
+
     def _transform_vectors(self) -> None:
         xvec_val = self.xvec.transpose()
         yvec_val = self.yvec.transpose()
-        self.xvec = (xvec_val*np.cos(self.coord_data) - yvec_val*np.sin(self.coord_data))
-        self.yvec = xvec_val*np.sin(self.coord_data) + yvec_val*np.cos(self.coord_data)
+        self.xvec = xvec_val * np.cos(self.coord_data) - yvec_val * np.sin(
+            self.coord_data
+        )
+        self.yvec = xvec_val * np.sin(self.coord_data) + yvec_val * np.cos(
+            self.coord_data
+        )
 
     def _get_field_names(self) -> list:
         field1 = self.field + "1"
         field2 = self.field + self.coord_dict[self.slicing_axis]
         return [field1, field2]
-    
+
     def _get_bg_names(self) -> list:
         bg1 = self.field + "01"
         bg2 = self.field + "0" + self.coord_dict[self.slicing_axis]

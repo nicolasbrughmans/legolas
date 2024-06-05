@@ -152,7 +152,7 @@ class VTKDataExporter:
                     u3=self.u3_data,
                     t=time,
                     k2=k2,
-                    k3=k3
+                    k3=k3,
                 )
         return solution
 

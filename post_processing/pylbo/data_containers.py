@@ -33,12 +33,14 @@ def ensure_dataseries(data: any) -> None:
     """Ensures that the given data is a :class:`LegolasDataSeries`."""
     if not isinstance(data, LegolasDataSeries):
         raise TypeError(f"expected a LegolasDataSeries, got {type(data)}")
-    
+
 
 def ensure_data_container(data: any) -> None:
     """Ensures that the given data is a :class:`LegolasDataSet` or a :class:`LegolasDataSeries`."""
     if not isinstance(data, (LegolasDataSet, LegolasDataSeries)):
-        raise TypeError(f"expected a LegolasDataSet or LegolasDataSeries, got {type(data)}")       
+        raise TypeError(
+            f"expected a LegolasDataSet or LegolasDataSeries, got {type(data)}"
+        )
 
 
 def transform_to_dataseries(data: any) -> LegolasDataSeries:
@@ -49,7 +51,6 @@ def transform_to_dataseries(data: any) -> LegolasDataSeries:
         return LegolasDataSeries([data.datfile])
     else:
         return data
-    
 
 
 class LegolasDataContainer(ABC):

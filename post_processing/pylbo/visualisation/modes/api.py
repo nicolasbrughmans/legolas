@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Union
 
 import numpy as np
-from pylbo.data_containers import LegolasDataSet, LegolasDataSeries, ensure_dataset, transform_to_dataseries
+from pylbo.data_containers import (
+    LegolasDataSet,
+    LegolasDataSeries,
+    ensure_dataset,
+    transform_to_dataseries,
+)
 from pylbo.utilities.toolbox import transform_to_list, transform_to_numpy
 from pylbo.visualisation.modes.cartesian_2d import CartesianSlicePlot2D
 from pylbo.visualisation.modes.cartesian_3d import CartesianSlicePlot3D
@@ -13,20 +18,25 @@ from pylbo.visualisation.modes.mode_data import ModeVisualisationData
 from pylbo.visualisation.modes.temporal_1d import TemporalEvolutionPlot1D
 from pylbo.visualisation.modes.vtk_export import VTKCartesianData, VTKCylindricalData
 
-def _handle_expected_input_omega(ds : LegolasDataSeries, omega) -> list[list[complex]]:
+
+def _handle_expected_input_omega(ds: LegolasDataSeries, omega) -> list[list[complex]]:
     omega_temp = transform_to_list(omega)
-    if len(ds) == 1: return([omega_temp])
+    if len(ds) == 1:
+        return [omega_temp]
     if len(ds) > 1:
-        if len(ds) != len(omega_temp): 
+        if len(ds) != len(omega_temp):
             raise ValueError("Need as many omegas (or lists of omegas) as datasets.")
         else:
             for i, omega_val in enumerate(omega_temp):
                 omega_temp[i] = transform_to_list(omega_val)
     return omega_temp
 
+
 def plot_1d_temporal_evolution(
     ds: Union[LegolasDataSet, LegolasDataSeries],
-    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
+    omega: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ],
     ef_name: str,
     u2: float,
     u3: float,
@@ -78,7 +88,10 @@ def plot_1d_temporal_evolution(
     TemporalEvolutionPlot1D
         The plot object.
     """
-    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    if isinstance(ds, LegolasDataSeries):
+        print(
+            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+        )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
     data = ModeVisualisationData(
@@ -92,7 +105,9 @@ def plot_1d_temporal_evolution(
 
 def plot_2d_slice(
     ds: Union[LegolasDataSet, LegolasDataSeries],
-    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
+    omega: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ],
     ef_name: str,
     u2: Union[float, np.ndarray],
     u3: Union[float, np.ndarray],
@@ -155,13 +170,16 @@ def plot_2d_slice(
     p : CartesianSlicePlot2D or CylindricalSlicePlot2D
         The plot object.
     """
-    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    if isinstance(ds, LegolasDataSeries):
+        print(
+            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+        )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
     )
-    if not polar or ds.geometry=="Cartesian":
+    if not polar or ds.geometry == "Cartesian":
         p = CartesianSlicePlot2D(
             data, u2, u3, time, slicing_axis, figsize, show_ef_panel, **kwargs
         )
@@ -174,7 +192,9 @@ def plot_2d_slice(
 
 def plot_3d_slice(
     ds: Union[LegolasDataSet, LegolasDataSeries],
-    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
+    omega: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ],
     ef_name: str,
     u2: Union[float, np.ndarray],
     u3: Union[float, np.ndarray],
@@ -227,7 +247,10 @@ def plot_3d_slice(
     p : CartesianSlicePlot3D or CylindricalSlicePlot3D
         The plot object.
     """
-    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    if isinstance(ds, LegolasDataSeries):
+        print(
+            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+        )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
     u3 = transform_to_numpy(u3)
@@ -242,8 +265,10 @@ def plot_3d_slice(
 
 
 def prepare_vtk_export(
-    ds: Union[LegolasDataSet,LegolasDataSeries],
-    omega: Union[complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]],
+    ds: Union[LegolasDataSet, LegolasDataSeries],
+    omega: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ],
     u2: np.ndarray,
     u3: np.ndarray,
     use_real_part: bool = True,
@@ -271,7 +296,10 @@ def prepare_vtk_export(
     VTKCartesianData or VTKCylindricalData
         Object that can be used to generate VTK files.
     """
-    if isinstance(ds, LegolasDataSeries): print("WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution")
+    if isinstance(ds, LegolasDataSeries):
+        print(
+            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+        )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
     data = ModeVisualisationData(

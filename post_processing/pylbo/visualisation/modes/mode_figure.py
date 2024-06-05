@@ -96,7 +96,11 @@ class ModeFigure(FigureWindow):
             ensure_attr_set(self, f"{attr}_data")
         ensure_attr_set(self, "solution_shape")
 
-        self._multiple_wavenumbers = (len(reduce_to_unique_array(self.data.k2)) + len(reduce_to_unique_array(self.data.k3)) > 2)
+        self._multiple_wavenumbers = (
+            len(reduce_to_unique_array(self.data.k2))
+            + len(reduce_to_unique_array(self.data.k3))
+            > 2
+        )
 
         # don't explicitly create an empty array as this may return a broadcasted view
         self._solutions = 0
@@ -191,7 +195,13 @@ class ModeFigure(FigureWindow):
             The mode solution.
         """
         return self.data.get_mode_solution(
-            ef=efdata["ef"], omega=efdata["omega"], u2=u2, u3=u3, t=t, k2=efdata["k2"], k3=efdata["k3"]
+            ef=efdata["ef"],
+            omega=efdata["omega"],
+            u2=u2,
+            u3=u3,
+            t=t,
+            k2=efdata["k2"],
+            k3=efdata["k3"],
         )
 
     @property

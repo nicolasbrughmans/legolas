@@ -71,10 +71,14 @@ class CartesianSlicePlot2D(ModeFigure):
 
         self.vmin = np.min(self._solutions)
         self.vmax = np.max(self._solutions)
-        self.xmin = np.min(self.data.ds.ef_grid) if self.ax.name!="polar" else 0.0
+        self.xmin = np.min(self.data.ds.ef_grid) if self.ax.name != "polar" else 0.0
         self.xmax = np.max(self.data.ds.ef_grid)
-        self.coordmin = np.min(self._u2) if self.slicing_axis == self._u3axis else np.min(self._u3)
-        self.coordmax = np.max(self._u2) if self.slicing_axis == self._u3axis else np.max(self._u3)
+        self.coordmin = (
+            np.min(self._u2) if self.slicing_axis == self._u3axis else np.min(self._u3)
+        )
+        self.coordmax = (
+            np.max(self._u2) if self.slicing_axis == self._u3axis else np.max(self._u3)
+        )
 
     def _validate_slicing_axis(self, slicing_axis: str, allowed_axes: list[str]) -> str:
         """
@@ -144,9 +148,13 @@ class CartesianSlicePlot2D(ModeFigure):
         axis = self.slicing_axis
         coord = self._u2 if axis == self._u3axis else self._u3
         self.solution_shape = (len(self._u1), len(coord))
-        for efs, omegas, k2, k3 in zip(self.data.eigenfunction, self.data.omega, self.data.k2, self.data.k3):
+        for efs, omegas, k2, k3 in zip(
+            self.data.eigenfunction, self.data.omega, self.data.k2, self.data.k3
+        ):
             for ef, omega in zip(efs, omegas):
-                data = np.broadcast_to(ef, shape=reversed(self.solution_shape)).transpose()
+                data = np.broadcast_to(
+                    ef, shape=reversed(self.solution_shape)
+                ).transpose()
                 self.ef_data.append({"ef": data, "omega": omega, "k2": k2, "k3": k3})
         x_2d, coord_2d = np.meshgrid(self.data.ds_bg.ef_grid, coord, indexing="ij")
 
@@ -244,7 +252,10 @@ class CartesianSlicePlot2D(ModeFigure):
                     self._update_view_clims(solution)
                 else:
                     self._update_view_clims(initial_solution)
-                if self.data.ds_bg.header["physics"]["flow"] and self.slicing_axis==self._u3axis:
+                if (
+                    self.data.ds_bg.header["physics"]["flow"]
+                    and self.slicing_axis == self._u3axis
+                ):
                     self._draw_comoving_dot(t)
                 self._set_t_txt(t)
                 writer.grab_frame()
@@ -289,17 +300,24 @@ class CartesianSlicePlot2D(ModeFigure):
             ymax = min(self.data.ds_bg.x_end, max(self.ax.get_ylim()))
             yloc = np.linspace(ymin, ymax, 22)[1:-1]
             scaling = yloc
-        
-        xloc = x0 + t * np.interp(yloc, self.data.ds_bg.grid_gauss, self.data.ds_bg.equilibria["v02"]) / scaling
+
+        xloc = (
+            x0
+            + t
+            * np.interp(
+                yloc, self.data.ds_bg.grid_gauss, self.data.ds_bg.equilibria["v02"]
+            )
+            / scaling
+        )
         for i in range(len(xloc)):
-            while xloc[i] > np.max(self.u2_data): #for periodic reappearance
+            while xloc[i] > np.max(self.u2_data):  # for periodic reappearance
                 xloc[i] -= np.max(self.u2_data)
         if self._view_dot is not None:
             self._view_dot.remove()
         if self.ax.name == "polar":
-            self._view_dot = self.ax.scatter(xloc, yloc, marker='o', c=dotcolor)
+            self._view_dot = self.ax.scatter(xloc, yloc, marker="o", c=dotcolor)
         else:
-            self._view_dot = self.ax.scatter(yloc, xloc, marker='o', c=dotcolor)
+            self._view_dot = self.ax.scatter(yloc, xloc, marker="o", c=dotcolor)
 
     def _update_view(self, updated_solution: np.ndarray) -> None:
         """
@@ -316,7 +334,7 @@ class CartesianSlicePlot2D(ModeFigure):
             self._update_contour_plot(updated_solution)
         else:
             self._view.set_array(updated_solution.ravel())
-        if self._has_streamlines or self._has_quivers: 
+        if self._has_streamlines or self._has_quivers:
             self._update_vectorplot()
 
     def _update_view_clims(self, solution: np.ndarray) -> None:
@@ -338,39 +356,80 @@ class CartesianSlicePlot2D(ModeFigure):
         self.draw_solution()
         self.add_axes_labels()
 
-
-    def add_streamlines(self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs) -> None:
+    def add_streamlines(
+        self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
+    ) -> None:
         self._has_streamlines = True
         self._has_quivers = False
-        self._add_vectorplot(xgrid=xgrid, coordgrid=coordgrid, field=field, add_background=add_background, **kwargs)
+        self._add_vectorplot(
+            xgrid=xgrid,
+            coordgrid=coordgrid,
+            field=field,
+            add_background=add_background,
+            **kwargs,
+        )
 
-    def add_quivers(self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs) -> None:
+    def add_quivers(
+        self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
+    ) -> None:
         self._has_quivers = True
         self._has_streamlines = False
-        self._add_vectorplot(xgrid=xgrid, coordgrid=coordgrid, field=field, add_background=add_background, **kwargs)
+        self._add_vectorplot(
+            xgrid=xgrid,
+            coordgrid=coordgrid,
+            field=field,
+            add_background=add_background,
+            **kwargs,
+        )
 
-    def _add_vectorplot(self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs) -> None:
+    def _add_vectorplot(
+        self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
+    ) -> None:
         self.draw()
-        self.vector_handler = self._create_vectorplot(xgrid=xgrid, coordgrid=coordgrid, field=field, add_background=add_background, **kwargs)
+        self.vector_handler = self._create_vectorplot(
+            xgrid=xgrid,
+            coordgrid=coordgrid,
+            field=field,
+            add_background=add_background,
+            **kwargs,
+        )
         if self._has_streamlines:
             self.vector_handler.quivers = None
         if self._has_quivers:
             self.vector_handler.streamlines = None
         self._draw_vectorplot()
 
-    def _create_vectorplot(self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs) -> VectorplotHandler:
+    def _create_vectorplot(
+        self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
+    ) -> VectorplotHandler:
 
-        if xgrid is None: xgrid = self.data.ds_bg.ef_grid
-        if coordgrid is None: 
+        if xgrid is None:
+            xgrid = self.data.ds_bg.ef_grid
+        if coordgrid is None:
             coordgrid = self._u2 if self.slicing_axis == self._u3axis else self._u3
 
-        streamline_data = ModeVisualisationData(self.data.ds, self.data.omega, None, self.data.use_real_part, self.data.complex_factor, self.data.add_background)
+        streamline_data = ModeVisualisationData(
+            self.data.ds,
+            self.data.omega,
+            None,
+            self.data.use_real_part,
+            self.data.complex_factor,
+            self.data.add_background,
+        )
 
-        vector_handler = VectorplotHandler(xgrid=xgrid, coordgrid=coordgrid, field=field, data=streamline_data, axes=self.ax, add_background=add_background, **kwargs)
+        vector_handler = VectorplotHandler(
+            xgrid=xgrid,
+            coordgrid=coordgrid,
+            field=field,
+            data=streamline_data,
+            axes=self.ax,
+            add_background=add_background,
+            **kwargs,
+        )
         vector_handler._set_slicing_axis(self.slicing_axis, self._u2axis, self._u3axis)
         vector_handler._set_streamplot_arrays(u2=self.u2_data, u3=self.u3_data)
         return vector_handler
-    
+
     def _draw_vectorplot(self) -> None:
         self.vector_handler._set_time(self.time_data)
         self.vector_handler._set_solutions()
@@ -379,8 +438,16 @@ class CartesianSlicePlot2D(ModeFigure):
         if self._has_quivers:
             self.vector_handler._draw_quivers()
 
-        xlims = (self.xmin, self.xmax) if not self.vector_handler.polar else (self.coordmin, self.coordmax)
-        ylims = (self.coordmin, self.coordmax) if not self.vector_handler.polar else (self.xmin, self.xmax)
+        xlims = (
+            (self.xmin, self.xmax)
+            if not self.vector_handler.polar
+            else (self.coordmin, self.coordmax)
+        )
+        ylims = (
+            (self.coordmin, self.coordmax)
+            if not self.vector_handler.polar
+            else (self.xmin, self.xmax)
+        )
         self.ax.set_xlim(xlims)
         self.ax.set_ylim(ylims)
 
@@ -391,4 +458,3 @@ class CartesianSlicePlot2D(ModeFigure):
             self.vector_handler._draw_streamlines()
         if self._has_quivers:
             self.vector_handler._update_quivers()
-        
