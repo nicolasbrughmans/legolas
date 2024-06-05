@@ -2,9 +2,9 @@ name: pylbo
 
 on:
   push:
-    branches: [master, develop]
+    branches: [master]
   pull_request:
-    branches: [master, develop]
+    branches: [master]
 
 env:
   CC: /usr/bin/gcc-10
