@@ -1,14 +1,20 @@
-import f90nml
-import pytest
-import numpy as np
 from pathlib import Path
+
+import f90nml
+import numpy as np
 import pylbo
+import pytest
 from pylbo.automation.generator import ParfileGenerator
 
 
 def test_basename_none(tmpdir):
     gen = ParfileGenerator({}, output_dir=tmpdir)
-    assert gen.basename == "parfile"
+    assert gen.basenames == ["parfile"]
+
+
+def test_basename_none_multiple(tmpdir):
+    gen = ParfileGenerator({"number_of_runs": 5}, output_dir=tmpdir)
+    assert gen.basenames == [f"parfile{i:04d}" for i in range(1, 6)]
 
 
 def test_outputdir_none():
@@ -90,21 +96,6 @@ def test_sigma_complex():
     sigma = gen.container["solvelist"].get("sigma")[0]
     assert isinstance(sigma, complex)
     assert np.isclose(sigma, 5.0 + 0j)
-
-
-def test_logfile_name(tmpdir):
-    gen = ParfileGenerator(
-        {
-            "gridpoints": 50,
-            "equilibrium_type": "user_defined",
-            "basename_logfile": "mylog",
-        },
-        output_dir=tmpdir,
-    )
-    gen.create_namelist_from_dict()
-    parfile = gen.generate_parfiles()
-    parfile_dict = f90nml.read(*parfile)
-    assert parfile_dict["savelist"].get("basename_logfile") == "mylog"
 
 
 def test_datfile_name_generation_multiruns(tmpdir):

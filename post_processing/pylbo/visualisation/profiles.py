@@ -1,16 +1,24 @@
+from __future__ import annotations
+
 import numpy as np
-from pylbo.visualisation.figure_manager import FigureWindow
-from pylbo.visualisation.legend_interface import LegendHandler
+from pylbo.utilities.eq_balance import get_equilibrium_balance
 from pylbo.visualisation.continua import ContinuaHandler
+from pylbo.visualisation.figure_window import InteractiveFigureWindow
+from pylbo.visualisation.legend_handler import LegendHandler
+from pylbo.visualisation.utils import background_name_to_latex
 
 
-class EquilibriumProfile(FigureWindow):
+class EquilibriumProfile(InteractiveFigureWindow):
     """Subclass responsible for drawing the equilibrium profiles."""
 
     def __init__(self, data, figsize, interactive, **kwargs):
-        super().__init__(figure_type="equilibrium-fields", figsize=figsize)
+        fig, ax = super().create_default_figure(
+            figlabel="equilibrium-fields", figsize=figsize
+        )
+        super().__init__(fig)
         self.data = data
         self.kwargs = kwargs
+        self.ax = ax
         self.ax2 = None
         # check if we need an additional axis
         for name in self.data.eq_names:
@@ -18,23 +26,16 @@ class EquilibriumProfile(FigureWindow):
             if name.startswith("d"):
                 values = self.data.equilibria.get(name)
                 if any(values != 0):
-                    self.ax2 = super()._add_subplot_axes(self.ax, "bottom")
+                    self.ax2 = super().add_subplot_axes(self.ax, "bottom")
                     break
         self.leg_handle = LegendHandler(interactive)
         self.draw()
         if interactive:
-            self._enable_interactive_legend(self.leg_handle)
-
-    def draw(self):
-        """Draws the figure."""
-        super().draw()
-        self._add_equilibria()
+            super().make_legend_interactive(self.leg_handle)
         self.fig.tight_layout()
 
-    def _add_equilibria(self):
-        """
-        Adds the equilibria to the figure. Also sets the legend handler items
-        """
+    def draw(self):
+        """Adds the equilibria to the figure. Also sets the legend handler items"""
         items = []
         for name in self.data.eq_names:
             if name.startswith("d"):
@@ -47,7 +48,7 @@ class EquilibriumProfile(FigureWindow):
             (item,) = axis.plot(
                 self.data.grid_gauss,
                 values,
-                label=name,
+                label=background_name_to_latex(name),
                 alpha=self.leg_handle.alpha_point,
             )
             axis.axhline(y=0, color="grey", linestyle="dotted", alpha=0.6)
@@ -82,31 +83,28 @@ class EquilibriumProfile(FigureWindow):
         self.leg_handle.autoscale = True
 
 
-class ContinuumProfile(FigureWindow):
+class ContinuumProfile(InteractiveFigureWindow):
     """Subclass responsible for drawing the continuum profiles."""
 
     def __init__(self, data, figsize, interactive, **kwargs):
-        super().__init__(figure_type="continua", figsize=figsize)
+        fig, ax = super().create_default_figure(figlabel="continua", figsize=figsize)
+        super().__init__(fig)
+        self.ax = ax
         self.data = data
         self.kwargs = kwargs
         self.handler = ContinuaHandler(interactive)
         self.draw()
         if interactive:
-            self._enable_interactive_legend(self.handler)
-
-    def draw(self):
-        """Draws the continua."""
-        super().draw()
-        self._draw_continua()
+            self.make_legend_interactive(self.handler)
         self.fig.tight_layout()
 
-    def _draw_continua(self):
+    def draw(self):
         """Adds the continua to the plot, also sets the legend handlers."""
         for color, name in zip(
             self.handler.continua_colors, self.handler.continua_names
         ):
             continuum = self.data.continua[name]
-            if self.handler.check_if_all_zero(continuum):
+            if np.allclose(abs(continuum), 0, atol=1e-12):
                 continue
             # non-adiabatic slow continua have real and imaginary parts
             if np.any(np.iscomplex(continuum)) and "slow" in name:
@@ -143,57 +141,31 @@ class ContinuumProfile(FigureWindow):
         self.ax.set_ylabel(r"$\omega$")
 
 
-class EquilibriumBalance(FigureWindow):
+class EquilibriumBalance(InteractiveFigureWindow):
     """Subclass responsible for plotting the equilibrium balance equations."""
 
-    def __init__(self, data, figsize, **kwargs):
-        super().__init__(figure_type="equilibrium-balance", figsize=figsize)
+    def __init__(self, data, figsize, interactive, **kwargs):
+        fig, ax = super().create_default_figure(
+            figlabel="equilibrium-balance", figsize=figsize
+        )
+        super().__init__(fig)
         self.data = data
         self.kwargs = kwargs
-        self.ax2 = super()._add_subplot_axes(self.ax, "bottom")
+        self.ax = ax
+        self.eq_balance = get_equilibrium_balance(ds=data)
+        self.legend_handler = LegendHandler(interactive)
         self.draw()
+        if interactive:
+            self.make_legend_interactive(self.legend_handler)
+        self.fig.tight_layout()
 
     def draw(self):
         """Draws the equilibrium balance equations."""
-        rho = self.data.equilibria["rho0"]
-        drho = self.data.equilibria["drho0"]
-        temp = self.data.equilibria["T0"]
-        dtemp = self.data.equilibria["dT0"]
-        b02 = self.data.equilibria["B02"]
-        db02 = self.data.equilibria["dB02"]
-        b03 = self.data.equilibria["B03"]
-        db03 = self.data.equilibria["dB03"]
-        g = self.data.equilibria["grav"]
-        v02 = self.data.equilibria["v02"]
-        kappa_perp = self.data.equilibria["kappa_perp"]
-        # L0 is only non-zero when custom heating is added
-        # (and is not saved to the datfile for now)
-        heat_loss = np.zeros_like(self.data.grid_gauss)
-        r_scale = self.data.scale_factor
-        dr_scale = self.data.d_scale_factor
-        equil_force = (
-            drho * temp
-            + rho * dtemp
-            + b02 * db02
-            + b03 * db03
-            + rho * g
-            - (dr_scale / r_scale) * (rho * v02 ** 2 - b02 ** 2)
+        for key, values in self.eq_balance.items():
+            (item,) = self.ax.plot(self.data.grid_gauss, values, label=key)
+            self.legend_handler.add(item)
+        self.ax.axhline(y=0, color="grey", linestyle="dotted", alpha=0.8)
+        self.legend_handler.legend = self.ax.legend(
+            bbox_to_anchor=(0.0, 1, 1, 0.102), loc="lower right", ncol=7
         )
-        equil_force[np.where(abs(equil_force) <= 1e-16)] = 0
-        self.ax.plot(self.data.grid_gauss, equil_force, **self.kwargs)
-        self.ax.axhline(y=0, color="grey", linestyle="dotted")
-        if any(abs(equil_force) > 1e-14):
-            self.ax.set_yscale("symlog")
-        self.ax.set_title("Force balance")
-
-        # ddT0 is not saved, so we do it numerically (it's a check anyway)
-        dtemp_fact = np.gradient(kappa_perp * dtemp, self.data.grid_gauss, edge_order=2)
-        equil_nadiab = (
-            dr_scale * kappa_perp * dtemp / r_scale + dtemp_fact - rho * heat_loss
-        )
-        equil_nadiab[np.where(abs(equil_nadiab) <= 1e-16)] = 0
-        self.ax2.plot(self.data.grid_gauss, equil_nadiab, **self.kwargs)
-        self.ax2.axhline(y=0, color="grey", linestyle="dotted")
-        if any(abs(equil_nadiab) > 1e-14):
-            self.ax2.set_yscale("symlog")
-        self.ax2.set_title("Nonadiabatic balance")
+        self.legend_handler.autoscale = True

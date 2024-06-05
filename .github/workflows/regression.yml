@@ -3,6 +3,8 @@ name: regression
 on:
   push:
     branches: [vis_nico, small_matrix_elements, develop_nico]
+  pull_requests:
+    branches = [develop_nico, master]
 
 jobs:
   test:
