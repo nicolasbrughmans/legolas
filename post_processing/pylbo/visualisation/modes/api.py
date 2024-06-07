@@ -6,7 +6,6 @@ import numpy as np
 from pylbo.data_containers import (
     LegolasDataSet,
     LegolasDataSeries,
-    ensure_dataset,
     transform_to_dataseries,
 )
 from pylbo.utilities.toolbox import transform_to_list, transform_to_numpy
@@ -61,7 +60,8 @@ def plot_1d_temporal_evolution(
     ds : LegolasDataSet, LegolasDataSeries
         The data set/series containing the eigenfunctions, having the same equilibria.
     omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
-        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data
+        series, length of omega and ds should match.
     ef_name : str
         The name of the eigenfunction to visualise.
     u2 : float
@@ -90,7 +90,8 @@ def plot_1d_temporal_evolution(
     """
     if isinstance(ds, LegolasDataSeries):
         print(
-            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+            "WARNING: Make sure data in LegolasDataSeries has same "
+            + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
@@ -138,7 +139,8 @@ def plot_2d_slice(
     ds : LegolasDataSet, LegolasDataSeries
         The data set/series containing the eigenfunctions, having the same equilibria.
     omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
-        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple
+        data series, length of omega and ds should match.
     ef_name : str
         The name of the eigenfunction to visualise.
     u2 : float, np.ndarray
@@ -172,7 +174,8 @@ def plot_2d_slice(
     """
     if isinstance(ds, LegolasDataSeries):
         print(
-            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+            "WARNING: Make sure data in LegolasDataSeries has same "
+            + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
@@ -220,7 +223,8 @@ def plot_3d_slice(
     ds : LegolasDataSet, LegolasDataSeries
         The data set/series containing the eigenfunctions, having the same equilibria.
     omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
-        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data
+        series, length of omega and ds should match.
     ef_name : str
         The name of the eigenfunction to visualise.
     u2 : float, np.ndarray
@@ -249,7 +253,8 @@ def plot_3d_slice(
     """
     if isinstance(ds, LegolasDataSeries):
         print(
-            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+            "WARNING: Make sure data in LegolasDataSeries has same "
+            + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)
@@ -283,7 +288,8 @@ def prepare_vtk_export(
     ds : LegolasDataSet, LegolasDataSeries
         The data set/series containing the eigenfunctions, having the same equilibria.
     omega : complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
-        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data series, length of omega and ds should match.
+        The (approximate) eigenvalue of the mode(s) to visualise. For multiple data
+        series, length of omega and ds should match.
     u2 : np.ndarray
         The y or :math:`\\theta` coordinates of the eigenmode solution.
     u3 : np.ndarray
@@ -298,7 +304,8 @@ def prepare_vtk_export(
     """
     if isinstance(ds, LegolasDataSeries):
         print(
-            "WARNING: Make sure data in LegolasDataSeries has same equilibrium and resolution"
+            "WARNING: Make sure data in LegolasDataSeries has same "
+            + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_omega(ds, omega)

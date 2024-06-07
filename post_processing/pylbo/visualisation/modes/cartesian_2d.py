@@ -276,7 +276,8 @@ class CartesianSlicePlot2D(ModeFigure):
 
     def _draw_comoving_dot(self, t):
         """
-        Overplots the data in an animation with red dots that are comoving with the flow.
+        Overplots the data in an animation with red dots that
+        are comoving with the flow.
 
         Parameters
         ----------

@@ -1,9 +1,7 @@
 import numpy as np
-from typing import Union
 from matplotlib.axes import Axes as mpl_axes
 from matplotlib.streamplot import StreamplotSet
 from matplotlib.quiver import Quiver
-from matplotlib.cm import binary
 from pylbo.visualisation.modes.mode_data import ModeVisualisationData
 
 

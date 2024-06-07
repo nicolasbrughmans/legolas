@@ -36,7 +36,8 @@ def ensure_dataseries(data: any) -> None:
 
 
 def ensure_data_container(data: any) -> None:
-    """Ensures that the given data is a :class:`LegolasDataSet` or a :class:`LegolasDataSeries`."""
+    """Ensures that the given data is a :class:`LegolasDataSet` or
+    a :class:`LegolasDataSeries`."""
     if not isinstance(data, (LegolasDataSet, LegolasDataSeries)):
         raise TypeError(
             f"expected a LegolasDataSet or LegolasDataSeries, got {type(data)}"

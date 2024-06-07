@@ -17,7 +17,8 @@ class ModeVisualisationData:
     Parameters
     ----------
     ds : ~pylbo.data_containers.LegolasDataSeries
-        The dataseries containing the eigenfunctions and modes to visualise, having the same equilibria.
+        The dataseries containing the eigenfunctions and modes to visualise,
+        having the same equilibria.
     omega : list[list[complex]]
         The (approximate) eigenvalue(s) of the mode(s) to visualise.
     ef_name : str
