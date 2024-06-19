@@ -62,7 +62,7 @@ class ModeVisualisationData:
         if add_background and not self.ds_bg.has_background:
             raise BackgroundNotPresent(self.ds_bg.datfile, "add background to solution")
         self.add_background = add_background
-        self._print_bg_info = False
+        self._print_bg_info = True
 
         self._ef_name = None if ef_name is None else validate_ef_name(ds, ef_name)
         self._ef_name_latex = None if ef_name is None else self.get_ef_name_latex()
@@ -228,9 +228,16 @@ class ModeVisualisationData:
             raise ValueError(
                 "Unable to add a background to the magnetic vector potential."
             )
-        (name,) = difflib.get_close_matches(self._ef_name, self.ds_bg.eq_names, 1)
-        if self._print_bg_info:
+        name = None
+        name_temp = difflib.get_close_matches(self._ef_name, self.ds_bg.eq_names, 1)
+        if name_temp != []:
+            (name,) = name_temp
+        if self._print_bg_info and name is not None:
             pylboLogger.info(
                 f"adding background for '{self._ef_name}', closest match is '{name}'"
+            )
+        else:
+            raise NotImplementedError(
+                f"Background is not implemented for '{self._ef_name}'"
             )
         return name
