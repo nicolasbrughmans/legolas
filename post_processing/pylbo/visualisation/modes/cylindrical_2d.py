@@ -137,7 +137,7 @@ class CylindricalSlicePlot2D(CartesianSlicePlot2D):
         if self._use_polar_axes:
             return ""
         if self.slicing_axis == self._u3axis:
-            return "y"
+            return r"$\theta$"
         return super().get_view_ylabel()
 
     def _create_figure_layout(self, figsize: tuple[int, int]) -> tuple[Figure, dict]:

@@ -213,8 +213,8 @@ class TestSliceZ_2DCyl(Slice2D):
     slicing_axis = "z"
     u2vals = np.linspace(0, 2 * np.pi, 50)
     u3vals = 1
-    xlabel = "x"
-    ylabel = "y"
+    xlabel = "r"
+    ylabel = r"$\theta$"
 
     @pytest.fixture(scope="class")
     def ds(self, ds_v121_magth):
