@@ -230,7 +230,13 @@ class CartesianSlicePlot2D(ModeFigure):
         )
 
     def create_animation(
-        self, times: np.ndarray, filename: str, fps: float = 10, dpi: int = 200
+        self,
+        times: np.ndarray,
+        filename: str,
+        fps: float = 10,
+        dpi: int = 200,
+        draw_dots: bool = False,
+        ndots: int = 20,
     ) -> None:
         writer = animation.FFMpegWriter(fps=fps)
         pbar = tqdm(total=len(times), unit="frames", desc=f"Creating '{filename}'")
@@ -252,11 +258,8 @@ class CartesianSlicePlot2D(ModeFigure):
                     self._update_view_clims(solution)
                 else:
                     self._update_view_clims(initial_solution)
-                if (
-                    self.data.ds_bg.header["physics"]["flow"]
-                    and self.slicing_axis == self._u3axis
-                ):
-                    self._draw_comoving_dot(t)
+                if self.slicing_axis == self._u3axis and draw_dots:
+                    self._draw_comoving_dot(t, ndots)
                 self._set_t_txt(t)
                 writer.grab_frame()
 
@@ -274,7 +277,7 @@ class CartesianSlicePlot2D(ModeFigure):
         txt = self.u2u3_txt.get_text().split("|")[0]
         self.u2u3_txt.set_text(f"{txt}| t = {t:.2f}")
 
-    def _draw_comoving_dot(self, t):
+    def _draw_comoving_dot(self, t, ndots):
         """
         Overplots the data in an animation with red dots that
         are comoving with the flow.
@@ -295,11 +298,11 @@ class CartesianSlicePlot2D(ModeFigure):
         ymin = max(self.data.ds_bg.x_start, min(lims))
         ymax = min(self.data.ds_bg.x_end, max(lims))
         scaling = 1.0
-        yloc = np.linspace(ymin, ymax, 22)[1:-1]
+        yloc = np.linspace(ymin, ymax, ndots + 2)[1:-1]
         if self.data.ds.geometry == "cylindrical":
             ymin = max(self.data.ds_bg.x_start, min(self.ax.get_ylim()))
             ymax = min(self.data.ds_bg.x_end, max(self.ax.get_ylim()))
-            yloc = np.linspace(ymin, ymax, 22)[1:-1]
+            yloc = np.linspace(ymin, ymax, ndots + 2)[1:-1]
             scaling = yloc
 
         xloc = (
