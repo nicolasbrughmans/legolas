@@ -252,7 +252,7 @@ class CartesianSlicePlot2D(ModeFigure):
                     )
                 if self.data.add_background:
                     solution += self.data.get_background(shape=self._solutions.shape)
-                self.time_data = t
+                self._time = t
                 self._update_view(updated_solution=solution)
                 if self.update_colorbar:
                     self._update_view_clims(solution)
@@ -265,7 +265,7 @@ class CartesianSlicePlot2D(ModeFigure):
 
                 pbar.update()
         self._solutions = initial_solution
-        self.time_data = self._time
+        self._time = self.time_data
 
     def _ensure_first_frame_is_drawn(self) -> None:
         if None in transform_to_list(self._view):
@@ -338,8 +338,6 @@ class CartesianSlicePlot2D(ModeFigure):
             self._update_contour_plot(updated_solution)
         else:
             self._view.set_array(updated_solution.ravel())
-        # if self._has_streamlines or self._has_quivers:
-        #     self._update_vectorplot()
         if self._has_streamlines:
             self._update_streamplot()
         if self._has_quivers:
@@ -387,17 +385,6 @@ class CartesianSlicePlot2D(ModeFigure):
             add_background=add_background,
             **kwargs,
         )
-
-    # def _add_vectorplot(
-    #     self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
-    # ) -> None:
-    #     self.vector_handler = self._create_vectorplot(
-    #         xgrid=xgrid,
-    #         coordgrid=coordgrid,
-    #         field=field,
-    #         add_background=add_background,
-    #         **kwargs,
-    #     )
 
     def _add_streamplot(
         self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
@@ -454,15 +441,14 @@ class CartesianSlicePlot2D(ModeFigure):
         vector_handler._set_streamplot_arrays(u2=self.u2_data, u3=self.u3_data)
         return vector_handler
 
-    # change all these things to the specific quiver or streamplot
     def _draw_vectorplot(self) -> None:
-        self.draw()
+        self._ensure_first_frame_is_drawn()
         if self._has_streamlines:
-            self.stream_handler._set_time(self.time_data)
+            self.stream_handler._set_time(self._time)
             self.stream_handler._set_solutions()
             self.stream_handler._draw_streamlines()
         if self._has_quivers:
-            self.quiver_handler._set_time(self.time_data)
+            self.quiver_handler._set_time(self._time)
             self.quiver_handler._set_solutions()
             self.quiver_handler._draw_quivers()
 
@@ -479,20 +465,12 @@ class CartesianSlicePlot2D(ModeFigure):
         self.ax.set_xlim(xlims)
         self.ax.set_ylim(ylims)
 
-    # def _update_vectorplot(self) -> None:
-    #     self.vector_handler._set_time(self.time_data)
-    #     self.vector_handler._set_solutions()
-    #     if self._has_streamlines:
-    #         self.vector_handler._draw_streamlines()
-    #     if self._has_quivers:
-    #         self.vector_handler._update_quivers()
-
     def _update_streamplot(self) -> None:
-        self.stream_handler._set_time(self.time_data)
+        self.stream_handler._set_time(self._time)
         self.stream_handler._set_solutions()
-        self.stream_handler._draw_streamlines()
+        self.stream_handler._draw_streamlines()  # sadly, streamlines can't be updated
 
     def _update_quiverplot(self) -> None:
-        self.quiver_handler._set_time(self.time_data)
+        self.quiver_handler._set_time(self._time)
         self.quiver_handler._set_solutions()
         self.quiver_handler._update_quivers()
