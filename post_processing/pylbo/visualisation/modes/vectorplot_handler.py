@@ -164,6 +164,10 @@ class VectorplotHandler:
 
         if self.add_background:
             bgs = self._get_bg_names()
+
+            print_bg_temp = self.data._print_bg_info
+            self.data._print_bg_info = False
+
             for i in range(2):
                 bg_temp = self.data.get_background(
                     name=bgs[i], shape=self.data.ds_bg.ef_grid.shape
@@ -173,6 +177,8 @@ class VectorplotHandler:
                     bg, shape=reversed(self.solution_shape)
                 ).transpose()
                 solutions[i] += bg
+
+            self.data._print_bg_info = print_bg_temp
 
         self._solutions = solutions
 
