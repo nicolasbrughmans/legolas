@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib.axes import Axes as mpl_axes
 from matplotlib.streamplot import StreamplotSet
 from matplotlib.quiver import Quiver
+from matplotlib.patches import FancyArrowPatch
 from pylbo.visualisation.modes.mode_data import ModeVisualisationData
 
 
@@ -89,7 +90,12 @@ class VectorplotHandler:
 
     def _clear_streamlines(self) -> None:
         try:
-            self.streamlines.remove()
+            self.streamlines.lines.remove()
+            for art in self.ax.get_children():
+                if not isinstance(art, FancyArrowPatch):
+                    continue
+                art.remove()  # removes the arrows
+            self.streamlines.arrows.set_alpha(0)
         except AttributeError:
             pass
 

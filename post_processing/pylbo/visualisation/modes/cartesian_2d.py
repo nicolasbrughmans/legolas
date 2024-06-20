@@ -338,8 +338,12 @@ class CartesianSlicePlot2D(ModeFigure):
             self._update_contour_plot(updated_solution)
         else:
             self._view.set_array(updated_solution.ravel())
-        if self._has_streamlines or self._has_quivers:
-            self._update_vectorplot()
+        # if self._has_streamlines or self._has_quivers:
+        #     self._update_vectorplot()
+        if self._has_streamlines:
+            self._update_streamplot()
+        if self._has_quivers:
+            self._update_quiverplot()
 
     def _update_view_clims(self, solution: np.ndarray) -> None:
         self.vmin, self.vmax = np.min(solution), np.max(solution)
@@ -364,8 +368,7 @@ class CartesianSlicePlot2D(ModeFigure):
         self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
     ) -> None:
         self._has_streamlines = True
-        self._has_quivers = False
-        self._add_vectorplot(
+        self._add_streamplot(
             xgrid=xgrid,
             coordgrid=coordgrid,
             field=field,
@@ -377,8 +380,7 @@ class CartesianSlicePlot2D(ModeFigure):
         self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
     ) -> None:
         self._has_quivers = True
-        self._has_streamlines = False
-        self._add_vectorplot(
+        self._add_quiverplot(
             xgrid=xgrid,
             coordgrid=coordgrid,
             field=field,
@@ -386,21 +388,39 @@ class CartesianSlicePlot2D(ModeFigure):
             **kwargs,
         )
 
-    def _add_vectorplot(
+    # def _add_vectorplot(
+    #     self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
+    # ) -> None:
+    #     self.vector_handler = self._create_vectorplot(
+    #         xgrid=xgrid,
+    #         coordgrid=coordgrid,
+    #         field=field,
+    #         add_background=add_background,
+    #         **kwargs,
+    #     )
+
+    def _add_streamplot(
         self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
     ) -> None:
-        self.draw()
-        self.vector_handler = self._create_vectorplot(
+        self.stream_handler = self._create_vectorplot(
             xgrid=xgrid,
             coordgrid=coordgrid,
             field=field,
             add_background=add_background,
             **kwargs,
         )
-        if self._has_streamlines:
-            self.vector_handler.quivers = None
-        if self._has_quivers:
-            self.vector_handler.streamlines = None
+        self._draw_vectorplot()
+
+    def _add_quiverplot(
+        self, xgrid=None, coordgrid=None, field="v", add_background=True, **kwargs
+    ) -> None:
+        self.quiver_handler = self._create_vectorplot(
+            xgrid=xgrid,
+            coordgrid=coordgrid,
+            field=field,
+            add_background=add_background,
+            **kwargs,
+        )
         self._draw_vectorplot()
 
     def _create_vectorplot(
@@ -434,31 +454,45 @@ class CartesianSlicePlot2D(ModeFigure):
         vector_handler._set_streamplot_arrays(u2=self.u2_data, u3=self.u3_data)
         return vector_handler
 
+    # change all these things to the specific quiver or streamplot
     def _draw_vectorplot(self) -> None:
-        self.vector_handler._set_time(self.time_data)
-        self.vector_handler._set_solutions()
+        self.draw()
         if self._has_streamlines:
-            self.vector_handler._draw_streamlines()
+            self.stream_handler._set_time(self.time_data)
+            self.stream_handler._set_solutions()
+            self.stream_handler._draw_streamlines()
         if self._has_quivers:
-            self.vector_handler._draw_quivers()
+            self.quiver_handler._set_time(self.time_data)
+            self.quiver_handler._set_solutions()
+            self.quiver_handler._draw_quivers()
 
         xlims = (
             (self.xmin, self.xmax)
-            if not self.vector_handler.polar
+            if not self.ax.name == "polar"
             else (self.coordmin, self.coordmax)
         )
         ylims = (
             (self.coordmin, self.coordmax)
-            if not self.vector_handler.polar
+            if not self.ax.name == "polar"
             else (self.xmin, self.xmax)
         )
         self.ax.set_xlim(xlims)
         self.ax.set_ylim(ylims)
 
-    def _update_vectorplot(self) -> None:
-        self.vector_handler._set_time(self.time_data)
-        self.vector_handler._set_solutions()
-        if self._has_streamlines:
-            self.vector_handler._draw_streamlines()
-        if self._has_quivers:
-            self.vector_handler._update_quivers()
+    # def _update_vectorplot(self) -> None:
+    #     self.vector_handler._set_time(self.time_data)
+    #     self.vector_handler._set_solutions()
+    #     if self._has_streamlines:
+    #         self.vector_handler._draw_streamlines()
+    #     if self._has_quivers:
+    #         self.vector_handler._update_quivers()
+
+    def _update_streamplot(self) -> None:
+        self.stream_handler._set_time(self.time_data)
+        self.stream_handler._set_solutions()
+        self.stream_handler._draw_streamlines()
+
+    def _update_quiverplot(self) -> None:
+        self.quiver_handler._set_time(self.time_data)
+        self.quiver_handler._set_solutions()
+        self.quiver_handler._update_quivers()
