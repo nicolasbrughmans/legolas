@@ -182,7 +182,7 @@ class ModeVisualisationData:
         """
         if name is None:
             name = self._get_background_name()
-        bg = self.ds_bg.equilibria[name]
+        bg = self.ds_bg.equilibria.get(name, np.zeros(self.ds_bg.gauss_gridpoints))
         bg_sampled = self._sample_background_on_ef_grid(bg)
         if self._print_bg_info:
             pylboLogger.info(f"background {name} broadcasted to shape {shape}")
@@ -237,7 +237,5 @@ class ModeVisualisationData:
                 f"adding background for '{self._ef_name}', closest match is '{name}'"
             )
         else:
-            raise NotImplementedError(
-                f"Background is not implemented for '{self._ef_name}'"
-            )
+            print(f"Background is zero or not implemented for '{self._ef_name}'")
         return name
