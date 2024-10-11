@@ -180,8 +180,9 @@ class ModeFigure(FigureWindow):
         ----------
         efdata : dict
             The data for the eigenfunction. This should be a dictionary with the
-            keys ``'ef'`` and ``'omega'``, with ``'ef'``containing the eigenfunction
-            and ``'omega'`` the corresponding eigenvalue.
+            keys ``'ef'``, ``'omega'`` and ``'factor'``, with ``'ef'``containing the eigenfunction,
+            ``'omega'`` the corresponding eigenvalue and ``'factor'``the corresponding complex
+            factor to be multiplied with.
         u2 : Union[float, np.ndarray]
             The data for the :math:`u_2` coordinate.
         u3 : Union[float, np.ndarray]
@@ -197,6 +198,7 @@ class ModeFigure(FigureWindow):
         return self.data.get_mode_solution(
             ef=efdata["ef"],
             omega=efdata["omega"],
+            complex_factor=efdata["factor"],
             u2=u2,
             u3=u3,
             t=t,

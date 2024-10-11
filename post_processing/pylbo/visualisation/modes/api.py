@@ -18,17 +18,17 @@ from pylbo.visualisation.modes.temporal_1d import TemporalEvolutionPlot1D
 from pylbo.visualisation.modes.vtk_export import VTKCartesianData, VTKCylindricalData
 
 
-def _handle_expected_input_omega(ds: LegolasDataSeries, omega) -> list[list[complex]]:
-    omega_temp = transform_to_list(omega)
-    if len(ds) == 1:
-        return [omega_temp]
+def _handle_expected_input_value(ds: LegolasDataSeries, value) -> list[list[complex]]:
+    value_temp = transform_to_list(value)
+    if len(ds) == 1 and not isinstance(value_temp[0], list):
+        return [value_temp]
     if len(ds) > 1:
-        if len(ds) != len(omega_temp):
-            raise ValueError("Need as many omegas (or lists of omegas) as datasets.")
+        if len(ds) != len(value_temp):
+            raise ValueError("Need as many values (or lists of values) as datasets.")
         else:
-            for i, omega_val in enumerate(omega_temp):
-                omega_temp[i] = transform_to_list(omega_val)
-    return omega_temp
+            for i, value_val in enumerate(value_temp):
+                value_temp[i] = transform_to_numpy(transform_to_list(value_val))
+    return value_temp
 
 
 def plot_1d_temporal_evolution(
@@ -43,7 +43,9 @@ def plot_1d_temporal_evolution(
     figsize: tuple[int, int] = None,
     add_background: bool = False,
     use_real_part: bool = True,
-    complex_factor: complex = None,
+    complex_factor: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ] = None,
     show_ef_panel: bool = True,
     **kwargs,
 ) -> TemporalEvolutionPlot1D:
@@ -76,8 +78,10 @@ def plot_1d_temporal_evolution(
         Whether to add the equilibrium background to the plot.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
-        A complex factor to multiply the eigenmode solution with.
+    complex_factor : complex, list[complex], np.ndarray, list[list[complex]],
+        list[np.ndarray]
+        A complex factor to multiply the eigenmode solution with. For multiple data
+        series, length of omega and ds should match.
     show_ef_panel : bool
         Whether to show the eigenfunction panel.
     kwargs : dict
@@ -94,7 +98,8 @@ def plot_1d_temporal_evolution(
             + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
-    omega = _handle_expected_input_omega(ds, omega)
+    omega = _handle_expected_input_value(ds, omega)
+    complex_factor = _handle_expected_input_value(ds, complex_factor)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
     )
@@ -117,7 +122,9 @@ def plot_2d_slice(
     figsize: tuple[int, int] = None,
     add_background: bool = False,
     use_real_part: bool = True,
-    complex_factor: complex = None,
+    complex_factor: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ] = None,
     show_ef_panel: bool = True,
     polar: bool = False,
     **kwargs,
@@ -157,8 +164,10 @@ def plot_2d_slice(
         Whether to add the equilibrium background to the plot.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
-        A complex factor to multiply the eigenmode solution with.
+    complex_factor : complex, list[complex], np.ndarray, list[list[complex]],
+        list[np.ndarray]
+        A complex factor to multiply the eigenmode solution with. For multiple data
+        series, length of omega and ds should match.
     show_ef_panel : bool
         Whether to show the eigenfunction panel.
     polar : bool
@@ -178,7 +187,8 @@ def plot_2d_slice(
             + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
-    omega = _handle_expected_input_omega(ds, omega)
+    omega = _handle_expected_input_value(ds, omega)
+    complex_factor = _handle_expected_input_value(ds, complex_factor)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
     )
@@ -206,7 +216,9 @@ def plot_3d_slice(
     figsize: tuple[int, int] = None,
     add_background: bool = False,
     use_real_part: bool = True,
-    complex_factor: complex = None,
+    complex_factor: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ] = None,
     **kwargs,
 ) -> CartesianSlicePlot3D:
     """
@@ -241,8 +253,10 @@ def plot_3d_slice(
         Whether to add the equilibrium background to the plot.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
-        A complex factor to multiply the eigenmode solution with.
+    complex_factor : complex, list[complex], np.ndarray, list[list[complex]],
+        list[np.ndarray]
+        A complex factor to multiply the eigenmode solution with. For multiple data
+        series, length of omega and ds should match.
     kwargs : dict
         Additional keyword arguments to pass to the plotting function.
 
@@ -257,7 +271,8 @@ def plot_3d_slice(
             + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
-    omega = _handle_expected_input_omega(ds, omega)
+    omega = _handle_expected_input_value(ds, omega)
+    complex_factor = _handle_expected_input_value(ds, complex_factor)
     u3 = transform_to_numpy(u3)
     data = ModeVisualisationData(
         ds, omega, ef_name, use_real_part, complex_factor, add_background
@@ -277,7 +292,9 @@ def prepare_vtk_export(
     u2: np.ndarray,
     u3: np.ndarray,
     use_real_part: bool = True,
-    complex_factor: complex = None,
+    complex_factor: Union[
+        complex, list[complex], np.ndarray, list[list[complex]], list[np.ndarray]
+    ] = None,
 ) -> Union[VTKCartesianData, VTKCylindricalData]:
     """
     Prepares for a VTK file export of the eigenmode solution in three dimensions.
@@ -296,6 +313,10 @@ def prepare_vtk_export(
         The z coordinates of the eigenmode solution.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
+    complex_factor : complex, list[complex], np.ndarray, list[list[complex]],
+        list[np.ndarray]
+        A complex factor to multiply the eigenmode solution with. For multiple data
+        series, length of omega and ds should match.
 
     Returns
     -------
@@ -308,7 +329,8 @@ def prepare_vtk_export(
             + "equilibrium and resolution"
         )
     ds = transform_to_dataseries(ds)
-    omega = _handle_expected_input_omega(ds, omega)
+    omega = _handle_expected_input_value(ds, omega)
+    complex_factor = _handle_expected_input_value(ds, complex_factor)
     data = ModeVisualisationData(
         ds, omega, None, use_real_part, complex_factor, add_background=False
     )

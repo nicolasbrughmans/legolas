@@ -25,7 +25,7 @@ class ModeVisualisationData:
         The name of the eigenfunction to visualise.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
+    complex_factor : list[list[complex]]
         A complex factor to multiply the eigenmode solution with.
     add_background : bool
         Whether to add the equilibrium background to the eigenmode solution.
@@ -40,8 +40,8 @@ class ModeVisualisationData:
         The eigenfunction of the mode(s) to visualise.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
-        The complex factor to multiply the eigenmode solution with.
+    complex_factor : list[list[complex]]
+        The complex factors to multiply the eigenmode solution with.
     add_background : bool
         Whether to add the equilibrium background to the eigenmode solution.
     """
@@ -49,10 +49,10 @@ class ModeVisualisationData:
     def __init__(
         self,
         ds: LegolasDataSeries,
-        omega: list[list[complex]],
+        omega: list[np.ndarray[complex]],
         ef_name: str = None,
         use_real_part: bool = True,
-        complex_factor: complex = None,
+        complex_factor: list[np.ndarray[complex]] = None,
         add_background: bool = False,
     ) -> None:
         self.ds = ds
@@ -66,6 +66,7 @@ class ModeVisualisationData:
 
         self._ef_name = None if ef_name is None else validate_ef_name(ds, ef_name)
         self._ef_name_latex = None if ef_name is None else self.get_ef_name_latex()
+        print(omega[0])
         self._all_efs = [
             dataset.get_eigenfunctions(ev_guesses=omega[i])
             for i, dataset in enumerate(self.ds.datasets)
@@ -100,13 +101,15 @@ class ModeVisualisationData:
             self._ef_name, geometry=self.ds.geometry, real_part=self.use_real_part
         )
 
-    def _validate_complex_factor(self, complex_factor: complex) -> complex:
+    def _validate_complex_factor(
+        self, complex_factor: list[list[complex]]
+    ) -> list[list[complex]]:
         """
-        Validates the complex factor.
+        Validates the complex factors.
 
         Parameters
         ----------
-        complex_factor : complex
+        complex_factor : list[list[complex]]
             The complex factor to validate.
 
         Returns
@@ -114,12 +117,17 @@ class ModeVisualisationData:
         complex
             The complex factor if it is valid, otherwise 1.
         """
-        return complex_factor if complex_factor is not None else 1
+        return (
+            complex_factor
+            if complex_factor is not None
+            else [[1] for ds in self.ds.datasets]
+        )
 
     def get_mode_solution(
         self,
         ef: np.ndarray,
         omega: complex,
+        complex_factor: complex,
         u2: Union[float, np.ndarray],
         u3: Union[float, np.ndarray],
         t: Union[float, np.ndarray],
@@ -138,6 +146,8 @@ class ModeVisualisationData:
             The eigenfunction to use.
         omega : complex
             The eigenvalue to use.
+        complex_factor : complex,
+            The complex factor to multiply with.
         u2 : Union[float, np.ndarray]
             The y coordinate(s) of the eigenmode solution.
         u3 : Union[float, np.ndarray]
@@ -156,9 +166,7 @@ class ModeVisualisationData:
             set of coordinate(s) and time(s).
         """
         solution = (
-            self.complex_factor
-            * ef
-            * np.exp(1j * k2 * u2 + 1j * k3 * u3 - 1j * omega * t)
+            complex_factor * ef * np.exp(1j * k2 * u2 + 1j * k3 * u3 - 1j * omega * t)
         )
         return getattr(solution, self.part_name)
 

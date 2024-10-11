@@ -143,11 +143,14 @@ class VTKDataExporter:
         """
         name = validate_ef_name(self.data.ds_bg, name)
         solution = 0
-        for all_efs, k2, k3 in zip(self.data._all_efs, self.data.k2, self.data.k3):
-            for ef in all_efs:
+        for all_efs, factors, k2, k3 in zip(
+            self.data._all_efs, self.data.complex_factors, self.data.k2, self.data.k3
+        ):
+            for ef, factor in zip(all_efs, factors):
                 solution += self.data.get_mode_solution(
                     ef=self.broadcast_to_3d(ef.get(name)),
                     omega=ef.get("eigenvalue"),
+                    complex_factor=factor,
                     u2=self.u2_data,
                     u3=self.u3_data,
                     t=time,

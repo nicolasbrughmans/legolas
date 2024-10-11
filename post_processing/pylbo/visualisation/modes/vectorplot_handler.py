@@ -144,8 +144,10 @@ class VectorplotHandler:
         fields = self._get_field_names()
         solutions = [np.zeros_like(self.u1_data), np.zeros_like(self.u1_data)]
 
-        for all_efs, k2, k3 in zip(self.data._all_efs, self.data.k2, self.data.k3):
-            for ef_highres in all_efs:
+        for all_efs, factors, k2, k3 in zip(
+            self.data._all_efs, self.data.complex_factor, self.data.k2, self.data.k3
+        ):
+            for ef_highres, factor in zip(all_efs, factors):
                 for i in range(2):
                     ef = ef_highres.get(fields[i])
                     ef = np.interp(self.xgrid, self.data.ds_bg.ef_grid, ef)
@@ -155,6 +157,7 @@ class VectorplotHandler:
                     solutions[i] += self.data.get_mode_solution(
                         ef=ef,
                         omega=ef_highres.get("eigenvalue"),
+                        complex_factor=factor,
                         u2=self.u2_data,
                         u3=self.u3_data,
                         t=self.time_data,
