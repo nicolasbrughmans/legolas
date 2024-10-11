@@ -66,7 +66,6 @@ class ModeVisualisationData:
 
         self._ef_name = None if ef_name is None else validate_ef_name(ds, ef_name)
         self._ef_name_latex = None if ef_name is None else self.get_ef_name_latex()
-        print(omega[0])
         self._all_efs = [
             dataset.get_eigenfunctions(ev_guesses=omega[i])
             for i, dataset in enumerate(self.ds.datasets)
