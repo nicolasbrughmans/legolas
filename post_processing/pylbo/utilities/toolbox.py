@@ -240,7 +240,9 @@ def get_maximum_eigenvalue(
     evs = eigenvalues.copy()
     if re_range is not None:
         # set eigenvalues outside of range to NaN
-        evs[np.logical_or(func(evs) < re_range[0], func(evs) > re_range[1])] = np.nan
+        evs[np.logical_or(np.real(evs) < re_range[0], np.real(evs) > re_range[1])] = (
+            np.nan
+        )
     if np.all(np.isnan(func(evs))):
         raise ValueError("get_maximum_eigenvalue: no eigenvalues found within range")
     return eigenvalues[np.nanargmax(func(evs))]
