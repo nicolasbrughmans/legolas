@@ -180,9 +180,9 @@ class ModeFigure(FigureWindow):
         ----------
         efdata : dict
             The data for the eigenfunction. This should be a dictionary with the
-            keys ``'ef'``, ``'omega'`` and ``'factor'``, with ``'ef'``containing the eigenfunction,
-            ``'omega'`` the corresponding eigenvalue and ``'factor'``the corresponding complex
-            factor to be multiplied with.
+            keys ``'ef'``, ``'omega'`` and ``'factor'``, with ``'ef'``containing
+            the eigenfunction, ``'omega'`` the corresponding eigenvalue and
+            ``'factor'``the corresponding complex factor to be multiplied with.
         u2 : Union[float, np.ndarray]
             The data for the :math:`u_2` coordinate.
         u3 : Union[float, np.ndarray]
