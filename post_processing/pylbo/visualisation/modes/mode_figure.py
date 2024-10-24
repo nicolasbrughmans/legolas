@@ -249,10 +249,12 @@ class ModeFigure(FigureWindow):
         if ax is None:
             return
         grid = self.data.ds_bg.ef_grid
-        for efs, omegas in zip(self.data.eigenfunction, self.data.omega):
-            for ef, omega in zip(efs, omegas):
+        for efs, omegas, factors in zip(
+            self.data.eigenfunction, self.data.omega, self.data.complex_factor
+        ):
+            for ef, omega, factor in zip(efs, omegas, factors):
                 label = rf"$\omega$ = {omega:.5f}"
-                ef = getattr(self.data.complex_factor * ef, self.data.part_name)
+                ef = getattr(factor * ef, self.data.part_name)
                 ax.plot(grid, ef, lw=2, label=label)
         ax.axvline(x=0, color="grey", ls="--", lw=1)
         ax.set_xlim(np.min(grid), np.max(grid))
