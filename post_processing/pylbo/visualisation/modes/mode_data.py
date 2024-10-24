@@ -58,7 +58,6 @@ class ModeVisualisationData:
         self.ds = ds
         self.ds_bg = self.ds.datasets[0]
         self.use_real_part = use_real_part
-        self.complex_factor = self._validate_complex_factor(complex_factor)
         if add_background and not self.ds_bg.has_background:
             raise BackgroundNotPresent(self.ds_bg.datfile, "add background to solution")
         self.add_background = add_background
@@ -75,6 +74,7 @@ class ModeVisualisationData:
         for all_efs in self._all_efs:
             self.omega.append([efs.get("eigenvalue") for efs in all_efs])
             self.eigenfunction.append([efs.get(self._ef_name) for efs in all_efs])
+        self.complex_factor = self._validate_complex_factor(complex_factor)
 
     @property
     def k2(self) -> float:
@@ -116,11 +116,13 @@ class ModeVisualisationData:
         complex
             The complex factor if it is valid, otherwise 1.
         """
-        return (
-            complex_factor
-            if complex_factor is not None
-            else [[1] for ds in self.ds.datasets]
-        )
+        if complex_factor is None:
+            complex_factor = []
+            for omegas in self.omega:
+                complex_factor.append([1]*len(omegas))
+        
+        return complex_factor
+        
 
     def get_mode_solution(
         self,
