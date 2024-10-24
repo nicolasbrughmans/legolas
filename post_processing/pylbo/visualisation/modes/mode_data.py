@@ -4,7 +4,7 @@ import difflib
 from typing import Union
 
 import numpy as np
-from pylbo.data_containers import LegolasDataSet
+from pylbo.data_containers import LegolasDataSeries
 from pylbo.exceptions import BackgroundNotPresent
 from pylbo.utilities.logger import pylboLogger
 from pylbo.visualisation.utils import ef_name_to_latex, validate_ef_name
@@ -16,57 +16,65 @@ class ModeVisualisationData:
 
     Parameters
     ----------
-    ds : ~pylbo.data_containers.LegolasDataSet
-        The dataset containing the eigenfunctions and modes to visualise.
-    omega : list[complex]
+    ds : ~pylbo.data_containers.LegolasDataSeries
+        The dataseries containing the eigenfunctions and modes to visualise,
+        having the same equilibria.
+    omega : list[list[complex]]
         The (approximate) eigenvalue(s) of the mode(s) to visualise.
     ef_name : str
         The name of the eigenfunction to visualise.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
+    complex_factor : list[list[complex]]
         A complex factor to multiply the eigenmode solution with.
     add_background : bool
         Whether to add the equilibrium background to the eigenmode solution.
 
     Attributes
     ----------
-    ds : ~pylbo.data_containers.LegolasDataSet
-        The dataset containing the eigenfunctions and modes to visualise.
-    omega : list[complex]
+    ds : ~pylbo.data_containers.LegolasDataSeries
+        The dataseries containing the eigenfunctions and modes to visualise.
+    omega : list[list[complex]]
         The (approximate) eigenvalue(s) of the mode(s) to visualise.
-    eigenfunction : list[np.ndarray]
+    eigenfunction : list[list[np.ndarray]]
         The eigenfunction of the mode(s) to visualise.
     use_real_part : bool
         Whether to use the real part of the eigenmode solution.
-    complex_factor : complex
-        The complex factor to multiply the eigenmode solution with.
+    complex_factor : list[list[complex]]
+        The complex factors to multiply the eigenmode solution with.
     add_background : bool
         Whether to add the equilibrium background to the eigenmode solution.
     """
 
     def __init__(
         self,
-        ds: LegolasDataSet,
-        omega: list[complex],
+        ds: LegolasDataSeries,
+        omega: list[np.ndarray[complex]],
         ef_name: str = None,
         use_real_part: bool = True,
-        complex_factor: complex = None,
+        complex_factor: list[np.ndarray[complex]] = None,
         add_background: bool = False,
     ) -> None:
         self.ds = ds
+        self.ds_bg = self.ds.datasets[0]
         self.use_real_part = use_real_part
-        self.complex_factor = self._validate_complex_factor(complex_factor)
-        if add_background and not ds.has_background:
-            raise BackgroundNotPresent(ds.datfile, "add background to solution")
+        if add_background and not self.ds_bg.has_background:
+            raise BackgroundNotPresent(self.ds_bg.datfile, "add background to solution")
         self.add_background = add_background
         self._print_bg_info = True
 
         self._ef_name = None if ef_name is None else validate_ef_name(ds, ef_name)
         self._ef_name_latex = None if ef_name is None else self.get_ef_name_latex()
-        self._all_efs = ds.get_eigenfunctions(ev_guesses=omega)
-        self.omega = [all_efs.get("eigenvalue") for all_efs in self._all_efs]
-        self.eigenfunction = [all_efs.get(self._ef_name) for all_efs in self._all_efs]
+        self._all_efs = [
+            dataset.get_eigenfunctions(ev_guesses=omega[i])
+            for i, dataset in enumerate(self.ds.datasets)
+        ]
+        self.omega = []
+        self.eigenfunction = []
+        for all_efs in self._all_efs:
+            self.omega.append([efs.get("eigenvalue") for efs in all_efs])
+            self.eigenfunction.append([efs.get(self._ef_name) for efs in all_efs])
+        self.complex_factor = self._validate_complex_factor(complex_factor)
 
     @property
     def k2(self) -> float:
@@ -92,13 +100,15 @@ class ModeVisualisationData:
             self._ef_name, geometry=self.ds.geometry, real_part=self.use_real_part
         )
 
-    def _validate_complex_factor(self, complex_factor: complex) -> complex:
+    def _validate_complex_factor(
+        self, complex_factor: list[list[complex]]
+    ) -> list[list[complex]]:
         """
-        Validates the complex factor.
+        Validates the complex factors.
 
         Parameters
         ----------
-        complex_factor : complex
+        complex_factor : list[list[complex]]
             The complex factor to validate.
 
         Returns
@@ -106,15 +116,24 @@ class ModeVisualisationData:
         complex
             The complex factor if it is valid, otherwise 1.
         """
-        return complex_factor if complex_factor is not None else 1
+        if complex_factor is None:
+            complex_factor = []
+            for omegas in self.omega:
+                complex_factor.append([1]*len(omegas))
+        
+        return complex_factor
+        
 
     def get_mode_solution(
         self,
         ef: np.ndarray,
         omega: complex,
+        complex_factor: complex,
         u2: Union[float, np.ndarray],
         u3: Union[float, np.ndarray],
         t: Union[float, np.ndarray],
+        k2: float,
+        k3: float,
     ) -> np.ndarray:
         """
         Calculates the full eigenmode solution for given coordinates and time.
@@ -128,12 +147,18 @@ class ModeVisualisationData:
             The eigenfunction to use.
         omega : complex
             The eigenvalue to use.
+        complex_factor : complex,
+            The complex factor to multiply with.
         u2 : Union[float, np.ndarray]
             The y coordinate(s) of the eigenmode solution.
         u3 : Union[float, np.ndarray]
             The z coordinate(s) of the eigenmode solution.
         t : Union[float, np.ndarray]
             The time(s) of the eigenmode solution.
+        k2 : float
+            The x2 wavenumber of the mode.
+        k3 : float
+            The x3 wavenumber of the mode.
 
         Returns
         -------
@@ -142,9 +167,7 @@ class ModeVisualisationData:
             set of coordinate(s) and time(s).
         """
         solution = (
-            self.complex_factor
-            * ef
-            * np.exp(1j * self.k2 * u2 + 1j * self.k3 * u3 - 1j * omega * t)
+            complex_factor * ef * np.exp(1j * k2 * u2 + 1j * k3 * u3 - 1j * omega * t)
         )
         return getattr(solution, self.part_name)
 
@@ -168,7 +191,7 @@ class ModeVisualisationData:
         """
         if name is None:
             name = self._get_background_name()
-        bg = self.ds.equilibria[name]
+        bg = self.ds_bg.equilibria.get(name, np.zeros(self.ds_bg.gauss_gridpoints))
         bg_sampled = self._sample_background_on_ef_grid(bg)
         if self._print_bg_info:
             pylboLogger.info(f"background {name} broadcasted to shape {shape}")
@@ -191,9 +214,9 @@ class ModeVisualisationData:
         if self._print_bg_info:
             pylboLogger.info(
                 f"sampling background [{len(bg)}] on eigenfunction grid "
-                f"[{len(self.ds.ef_grid)}]"
+                f"[{len(self.ds_bg.ef_grid)}]"
             )
-        return np.interp(self.ds.ef_grid, self.ds.grid_gauss, bg)
+        return np.interp(self.ds_bg.ef_grid, self.ds_bg.grid_gauss, bg)
 
     def _get_background_name(self) -> str:
         """
@@ -214,9 +237,14 @@ class ModeVisualisationData:
             raise ValueError(
                 "Unable to add a background to the magnetic vector potential."
             )
-        (name,) = difflib.get_close_matches(self._ef_name, self.ds.eq_names, 1)
-        if self._print_bg_info:
+        name = None
+        name_temp = difflib.get_close_matches(self._ef_name, self.ds_bg.eq_names, 1)
+        if name_temp != []:
+            (name,) = name_temp
+        if self._print_bg_info and name is not None:
             pylboLogger.info(
                 f"adding background for '{self._ef_name}', closest match is '{name}'"
             )
+        else:
+            print(f"Background is zero or not implemented for '{self._ef_name}'")
         return name

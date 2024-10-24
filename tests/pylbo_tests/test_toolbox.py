@@ -257,9 +257,9 @@ def test_resonance_location_interp():
 def test_resonance_location_none():
     grid = np.linspace(0, 1, 11)
     continuum = np.linspace(-3, 3, 11)
-    result = toolbox.find_resonance_location(continuum, grid, sigma=5)
+    result = toolbox.find_resonance_location(continuum, grid, 5)
     assert result is None
-    result = toolbox.find_resonance_location(continuum, grid, sigma=-4.5)
+    result = toolbox.find_resonance_location(continuum, grid, -4.5)
     assert result is None
 
 
