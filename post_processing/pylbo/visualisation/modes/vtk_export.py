@@ -144,7 +144,7 @@ class VTKDataExporter:
         name = validate_ef_name(self.data.ds_bg, name)
         solution = 0
         for all_efs, factors, k2, k3 in zip(
-            self.data._all_efs, self.data.complex_factors, self.data.k2, self.data.k3
+            self.data._all_efs, self.data.complex_factor, self.data.k2, self.data.k3
         ):
             for ef, factor in zip(all_efs, factors):
                 solution += self.data.get_mode_solution(
