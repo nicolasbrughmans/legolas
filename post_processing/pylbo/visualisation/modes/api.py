@@ -19,16 +19,30 @@ from pylbo.visualisation.modes.vtk_export import VTKCartesianData, VTKCylindrica
 
 
 def _handle_expected_input_value(ds: LegolasDataSeries, value) -> list[list[complex]]:
+    if value is None:
+        return value
     value_temp = transform_to_list(value)
-    if len(ds) == 1 and not isinstance(value_temp[0], list):
+    if (
+        len(ds) == 1
+        and not isinstance(value_temp[0], list)
+        and not isinstance(value_temp[0], np.ndarray)
+    ):
         return [value_temp]
     if len(ds) > 1:
-        if len(ds) != len(value_temp):
+        if len(ds) != len(value_temp) and len(value_temp) != 1:
             raise ValueError("Need as many values (or lists of values) as datasets.")
+        elif len(value_temp) == 1:
+            value_temp = transform_to_numpy([[value] for dataset in ds.datasets])
         else:
             for i, value_val in enumerate(value_temp):
                 value_temp[i] = transform_to_numpy(transform_to_list(value_val))
+
     return value_temp
+
+
+def _check_resolution_dataseries(ds: LegolasDataSeries) -> bool:
+    nr_gridpoints = np.unique([dataset.gridpoints for dataset in ds.datasets])
+    return len(nr_gridpoints) == 1
 
 
 def plot_1d_temporal_evolution(
@@ -93,10 +107,10 @@ def plot_1d_temporal_evolution(
         The plot object.
     """
     if isinstance(ds, LegolasDataSeries):
-        print(
-            "WARNING: Make sure data in LegolasDataSeries has same "
-            + "equilibrium and resolution"
-        )
+        print("WARNING: Make sure data in LegolasDataSeries has same " + "equilibrium.")
+        same_res = _check_resolution_dataseries(ds)
+        if not same_res:
+            raise ValueError("Legolas does not support different resolutions.")
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_value(ds, omega)
     complex_factor = _handle_expected_input_value(ds, complex_factor)
@@ -182,10 +196,10 @@ def plot_2d_slice(
         The plot object.
     """
     if isinstance(ds, LegolasDataSeries):
-        print(
-            "WARNING: Make sure data in LegolasDataSeries has same "
-            + "equilibrium and resolution"
-        )
+        print("WARNING: Make sure data in LegolasDataSeries has same " + "equilibrium.")
+        same_res = _check_resolution_dataseries(ds)
+        if not same_res:
+            raise ValueError("Legolas does not support different resolutions.")
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_value(ds, omega)
     complex_factor = _handle_expected_input_value(ds, complex_factor)
@@ -266,10 +280,10 @@ def plot_3d_slice(
         The plot object.
     """
     if isinstance(ds, LegolasDataSeries):
-        print(
-            "WARNING: Make sure data in LegolasDataSeries has same "
-            + "equilibrium and resolution"
-        )
+        print("WARNING: Make sure data in LegolasDataSeries has same " + "equilibrium.")
+        same_res = _check_resolution_dataseries(ds)
+        if not same_res:
+            raise ValueError("Legolas does not support different resolutions.")
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_value(ds, omega)
     complex_factor = _handle_expected_input_value(ds, complex_factor)
@@ -324,10 +338,10 @@ def prepare_vtk_export(
         Object that can be used to generate VTK files.
     """
     if isinstance(ds, LegolasDataSeries):
-        print(
-            "WARNING: Make sure data in LegolasDataSeries has same "
-            + "equilibrium and resolution"
-        )
+        print("WARNING: Make sure data in LegolasDataSeries has same " + "equilibrium.")
+        same_res = _check_resolution_dataseries(ds)
+        if not same_res:
+            raise ValueError("Legolas does not support different resolutions.")
     ds = transform_to_dataseries(ds)
     omega = _handle_expected_input_value(ds, omega)
     complex_factor = _handle_expected_input_value(ds, complex_factor)
