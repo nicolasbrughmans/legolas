@@ -155,12 +155,10 @@ class CartesianSlicePlot2D(ModeFigure):
             self.data.k2,
             self.data.k3,
         ):
-            print(factors)
             for ef, omega, factor in zip(efs, omegas, factors):
                 data = np.broadcast_to(
                     ef, shape=reversed(self.solution_shape)
                 ).transpose()
-                print(omega, factor)
                 self.ef_data.append(
                     {"ef": data, "omega": omega, "factor": factor, "k2": k2, "k3": k3}
                 )
