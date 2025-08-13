@@ -240,7 +240,9 @@ def get_maximum_eigenvalue(
     evs = eigenvalues.copy()
     if re_range is not None:
         # set eigenvalues outside of range to NaN
-        evs[np.logical_or(func(evs) < re_range[0], func(evs) > re_range[1])] = np.nan
+        evs[np.logical_or(np.real(evs) < re_range[0], np.real(evs) > re_range[1])] = (
+            np.nan
+        )
     if np.all(np.isnan(func(evs))):
         raise ValueError("get_maximum_eigenvalue: no eigenvalues found within range")
     return eigenvalues[np.nanargmax(func(evs))]
@@ -360,3 +362,20 @@ def find_resonance_location(continuum, grid, omega):
                 np.interp(omega.real, [c[idx + 1], c[idx]], [grid[idx + 1], grid[idx]])
             )
     return np.array(list(set(locs)), dtype=float)
+
+
+def is_custom_grid(grid):
+    """
+    Checks if a given grid is a custom grid, i.e. not equidistant.
+
+    Parameters
+    ----------
+    grid : numpy.ndarray
+        The grid to test.
+
+    Returns
+    -------
+    bool
+        `True` if the grid is a custom grid, `False` otherwise.
+    """
+    return not np.allclose(np.diff(grid), np.diff(grid)[0])

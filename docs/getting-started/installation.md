@@ -40,14 +40,16 @@ installed if you choose the Pylbo package install (see [below](/getting-started/
 - [tqdm](https://tqdm.github.io), used for progress bars.
 - [psutil](https://psutil.readthedocs.io/en/latest/), for management of multiprocessing resources during parallel runs.
 - [packaging](https://packaging.pypa.io/en/stable/), for handling datfile version control.
+- [sympy](https://www.sympy.org/en/index.html), to offer a convenient way of user module configuration.
+- [scipy](https://scipy.org), for interacting with Fortran code.
 
 You can alternatively install these manually using
 ```bash
-pip install numpy matplotlib f90nml tqdm psutil packaging
+pip install numpy matplotlib f90nml tqdm psutil packaging sympy scipy
 ```
 or
 ```bash
-conda install numpy matplotlib f90nml tqdm psutil packaging
+conda install numpy matplotlib f90nml tqdm psutil packaging sympy scipy
 ```
 depending on your preference. On Linux it's usually best to use the versions available in your package repository.
 
@@ -105,7 +107,7 @@ Afterwards you export the `$ARPACK_ROOT` environment variable, pointing to your 
 # Legolas
 Legolas can be obtained by cloning the online repository:
 ```bash
-git clone https://github.com/n-claes/legolas.git
+git clone https://github.com/legolas-project/legolas.git
 ```
 which will put it in the local repository `legolas`.
 Next you set the environment variable `$LEGOLASDIR` which points to this directory and add the `setup_tools` subdirectory to your PATH.
